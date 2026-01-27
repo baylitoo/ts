@@ -1,0 +1,96 @@
+{
+  "name": "amlnet_tgat",
+  "dataset_type": "amlnet",
+  "dataset_path": "data/amlnet/AMLNet_August_2025.csv",
+  "agent": {
+    "state_dim": 48,
+    "action_dim": 6,
+    "learning_rate": 0.0005,
+    "gamma": 0.99,
+    "epsilon_start": 1.0,
+    "epsilon_end": 0.15,
+    "epsilon_decay": 0.9995,
+    "buffer_capacity": 100000,
+    "use_prioritized_replay": true,
+    "hidden_dims": [
+      256,
+      256,
+      128
+    ],
+    "device": "cuda",
+    "agent_type": "qrdqn",
+    "num_quantiles": 128,
+    "n_step": 5,
+    "risk_measure": "cvar_90",
+    "prioritized_alpha": 0.7,
+    "prioritized_beta": 0.5,
+    "prioritized_beta_annealing": 0.0005,
+    "positive_fraction": 0.3,
+    "use_double_dqn": true,
+    "use_guided_exploration": true,
+    "exploration_temperature": 1.0,
+    "gradient_clip": 1.0
+  },
+  "gnn": {
+    "node_feature_dim": 20,
+    "gnn_type": "tgat",
+    "embedding_dim": 64,
+    "hidden_channels": 128,
+    "num_layers": 3,
+    "history_dim": 32,
+    "dropout": 0.1,
+    "heads": 4,
+    "device": "cuda",
+    "multi_branch": false,
+    "use_dqn_enhancement": false,
+    "num_classes": 2,
+    "time_attributes": [
+      "timestamp",
+      "time",
+      "step"
+    ]
+  },
+  "environment": {
+    "max_steps": 30,
+    "max_neighbors": 5,
+    "intrinsic_reward_weight": 0.7,
+    "step_penalty": -0.01,
+    "fraud_reward": 12.0,
+    "false_alarm_penalty": -12.0
+  },
+  "trainer": {
+    "num_episodes": 4000,
+    "batch_size": 128,
+    "eval_frequency": 100,
+    "checkpoint_frequency": 250,
+    "target_update_frequency": 20,
+    "curriculum_schedule": [
+      1.0,
+      0.9,
+      0.8,
+      0.7,
+      0.6,
+      0.5,
+      0.4,
+      0.3,
+      0.2,
+      0.1
+    ],
+    "max_steps_per_episode": 30,
+    "num_eval_episodes": 40,
+    "multi_branch": {
+      "enabled": false,
+      "variant": "improved",
+      "lambda_branch": 0.25,
+      "epsilon_dqn": 0.4,
+      "beta_reg": 0.1,
+      "temporal_decay": 0.1,
+      "adaptive_weighting": true,
+      "learning_rate": 0.0005,
+      "log_frequency": 50
+    }
+  },
+  "output_dir": "outputs/amlnet_tgat",
+  "seed": 42,
+  "nrows": null
+}

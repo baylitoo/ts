@@ -1,0 +1,366 @@
+\documentclass{modernsimplecv}
+% try out different fonts: classic, fira, raleway, chivo
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1cm, a4paper]{geometry}
+% ------------------------------------------------------------------------------------
+% you can try out different fonts here by commenting the following lines in and out
+% -----------------------------------------------------------------------------------
+\usepackage[default]{raleway}
+%\usepackage[sfdefault]{FiraSans} %% option 'sfdefault' activates Fira Sans as the default text font\renewcommand*\oldstylenums[1]{{\firaoldstyle #1}}\normalfont
+%\usepackage[familydefault,light]{Chivo} 
+%\usepackage[sfdefault,light,condensed]{roboto}
+%\usepackage[default]{cantarell}
+%\usepackage[sfdefault]{AlegreyaSans}
+
+
+\usepackage{beuron}
+\usepackage{LobsterTwo}%if not suposed to be main font, load other main font after this
+
+
+
+%------------------------------------------------------------------ Variablen
+
+\newlength{\rightcolwidth}
+\newlength{\leftcolwidth}
+\setlength{\leftcolwidth}{0.48\textwidth}
+\setlength{\rightcolwidth}{0.47\textwidth}
+
+%------------------------------------------------------------------
+\title{modern-simple-CV}
+\author{\LaTeX{} Ninja}
+\date{August 2019}
+
+\pagestyle{empty}
+\begin{document}
+
+
+\thispagestyle{empty}
+%-------------------------------------------------------------
+
+
+
+\tikz[remember picture,overlay] {%
+\node[rectangle, fill=white, anchor=north, minimum width=\paperwidth, minimum height=5cm](header) at (current page.north){};%
+}
+
+\begin{minipage}[t]{0.21\textwidth}
+\vspace{0pt} % Trick for alignment
+\includegraphics[width=\textwidth]{PhotoLunettes.jpg}\hspace{1em}
+\end{minipage}
+\hfill
+\begin{minipage}[t]{0.77\textwidth}
+\vspace{0pt} % Trick for alignment
+\begin{shaded*}
+
+\begin{minipage}[t]{0.4\textwidth}
+\vspace{0pt} % Trick for alignment
+% here the fancy font can be taken out by removing \LobsterTwo
+{\par\centering\huge{Ouguenoune Amine}} \\[0.3cm]
+\faMapMarker~ 136 Rue du Faubourg Saint-Martin 75010 \\
+
+{\small
+\faCommentsO~ Langues: \emph{Anglais} : Opérationnel\ \\ \;\emph{Arabe} : Bilingue}
+\end{minipage}\hfill
+\begin{minipage}[t]{0.55\textwidth}
+\vspace{0pt} % Trick for alignment
+\faPhone~ 0755161552 \\
+\faAt~ \protect\url{ouguenouneamine@gmail.com} \\
+
+
+\faLinkedinSquare \,\protect\url{https://www.linkedin.com/in/amine-ouguenoune-6a98bb24b/} \\
+
+\end{minipage}
+\hfill
+\end{shaded*}
+\end{minipage}\\[15pt]
+
+
+%------------------------------------------------
+
+% hier muss die "unsichtbare" Überschrift rein, weil er sonst nicht die Paracols startet..*. komisch...
+\subsection*{}
+\vspace{-3em}
+
+\setlength{\columnsep}{1.5cm}
+\columnratio{0.48}[0.47]
+\begin{paracol}{2}
+\hbadness5000
+%\backgroundcolor{c[1]}[rgb]{1,1,0.8} % cream yellow for column-1 %\backgroundcolor{g}[rgb]{0.8,1,1} % \backgroundcolor{l}[rgb]{0,0,0.7} % dark blue for left margin
+
+\paracolbackgroundoptions
+
+% 0.9,0.9,0.9 -- 0.8,0.8,0.8
+
+
+\footnotesize
+{
+
+\normalsize
+
+\section*{Expériences professionnelles}
+\begin{minipage}[t]{\leftcolwidth}
+\begin{tabular}{r| p{0.6\textwidth} c}
+    \cvevent{2023-2025}{Apprenti Data Scientist/ Développeur Full Stack}{BNP Securities and Services, BNP Paribas IT Group}{}{Pantin, Montreui}{bnp_logo1.jpg} \\
+    \cvevent{2023}{CDD - Chef de projet}{ADBI}{}{Paris 13}{adbi_logo.jpg} 
+\end{tabular}
+
+\vspace{2em}
+
+\section*{Parcours Académique}
+\begin{tabular}{r| p{0.6\textwidth} c}
+    \cvevent{2023--2025}{Master Ingénierie des systèmes intelligents}{Paris}{Sorbonne Université (ex UPMC)}{Formation approfondie mêlant logiciel, IA, data science et gestion de projets techniques complexes.}{33.jpg} \\
+    \cvevent{2021--2023}{Licence EEA}{Paris}{Sorbonne Université (ex UPMC)}{Electronique, Energie Electrique, Automatique.}{33.jpg} \\
+    \cvevent{2019-2021}{Classes préparatoires}{Alger}{Ecole nationale polytechnique}{Préparation aux études d'ingénieur, approfondissement des connaissances théoriques.}{enp.jpg}
+\end{tabular}
+
+\vspace{2em}
+\end{minipage}
+
+\switchcolumn
+
+\begin{minipage}[t]{\rightcolwidth}
+\section*{Projets}
+
+\begin{tabular}{r| p{0.6\textwidth} c}
+\small
+
+\cvevent{2025}{HARBOR -- Temporal Graph Guardrail Framework}{Lead RL Engineer}{BNPP ITG}{
+\textbf{Probl\'ematique :} Unifier l'entra\^\i nement GNN + RL sur graphes temporels (\textbf{BYOD}) avec supervision RL Guard et monitoring H100.\newline
+\textbf{Livrable :} Framework \textbf{HARBOR} (pipelines configurables, presets TGAT/TGN), instrumentation GPU (\textbf{NVML}, p95 latence) et rapports d'audit.\newline
+\textbf{Mod\`eles/Agents :} GraphSAGE/GAT/\textbf{TGAT}/\textbf{TGN}, QR-DQN (CVaR), RMGANets multi-branches.\newline
+\textbf{Use case :} AML \& sanctions -- r\'eduction \textbf{18\%} des faux positifs via p\'enalités configurables, pipelines pr\^ets PROD.\newline
+\textbf{Stack :} \textbf{PyTorch Geometric}, Gymnasium, CUDA/H100, NVML, \textbf{FastAPI} dashboards, GitLab CI.
+}{bnp_logo1.jpg} \\
+
+\cvevent{2025}{RISK ASSESSMENT PLATFORM}{Lead Dev}{BNPP ITG}{
+\textbf{Problématique :} Standardiser/accélérer l’évaluation des risques IT avec traçabilité et non-régression.\newline
+\textbf{Livrable :} Plateforme \textbf{multi-agents} pas-à-pas ; UI (React/TS), API sécurisée ; \textbf{évaluation continue} (golden sets, LLM-as-judge), gouvernance prompts/models/tools .\newline
+\textbf{Scope :} \textbf{Full-stack}.\newline
+\textbf{Stack :} React/TS ; \textbf{Django 5/DRF} + \textbf{FastAPI} (microservices LLM, SSE) ; LangGraph/OpenAI Agents ; Celery+Redis ; Qdrant/ElasticSearch ; MCP (Deep-Research : CVE/NVD, MITRE, OWASP + filtres BNPP); GitLab CI.
+}
+{bnp_logo1.jpg} \\
+
+\cvevent{2024}{Legal Copilot}{Contributeur}{BNPP ITG}{
+\textbf{Problématique :} Assistant juridique fiable sur de longs documents avec \textbf{citations obligatoires} et \textbf{politiques de refus}.\newline
+\textbf{Livrable :} Agent conversationnel, quotas/rate limiting, audit coût/token, session management, preference data mining (GRPO).\newline
+\textbf{Scope :} \textbf{Backend}.\newline
+\textbf{Stack :} React/TS ; \textbf{Django/DRF} + \textbf{FastAPI} (LLM, SSE) ; MCP ; Celery+Redis ; Qdrant/ElasticSearch; NGINX ; GitLab CI,
+}
+{bnp_logo1.jpg} \\
+
+\cvevent{2024}{Contribution à la bibliothèque interne RAG TOOLBOX}{Contributeur}{BNP Paribas IT Group}{
+\textbf{Problématique :} Réduire la dépendance aux frameworks externes ; standardiser \textbf{parsing} documentaire et \textbf{évaluation} RAG.\newline
+\begin{itemize}
+    \item \textbf{Parser basé sur PDFMiner :} Ajout de fonctionnalités manquantes (détection de tables via clustering d’objets PDF pertinents, reconnaissance des documents multi-colonnes par partitionnement et \emph{clustering} de zones de texte, et identification hiérarchique des titres via une estimation par densité de noyaux).
+    \item \textbf{Diverses autres contributions}
+\end{itemize}
+
+}{bnp_logo1.jpg} \\
+
+
+
+
+
+\normalsize
+
+\end{tabular}
+\end{minipage}
+\end{paracol}
+
+\newpage
+
+\begin{paracol}{2}
+
+\footnotesize
+
+\begin{minipage}[t]{\leftcolwidth}
+\normalsize
+\section*{Informatique et logiciels}
+\begin{tabular}{>{\footnotesize\bfseries}r >{\footnotesize}p{0.55\textwidth}}
+Agents / LLM Systems & LangGraph, CrewAI, AutoGen 0.2, MCP servers; A2A; LiteLLM / OpenAI Assistants, Palantir AIP \\
+Nocode & n8n, Dify, Make .. \\
+Orchestration / Workflows & Temporal, Prefect 3, Dagster, Ray (tasks/actors), retries/backoff, idempotence, feature flags (Unleash/Flipt) \\
+Inference / Gateway & vLLM, TensorRT-LLM, TGI, SGLang; model routing/proxy (LiteLLM, Langfuse) \\
+Plateforme \& Runtime (on-prem) & K8s (Helm, Kustomize), GitOps (Argo CD / Flux), autoscaling (KEDA, HPA/VPA), Service Mesh (Istio/Linkerd), Ingress (NGINX/Traefik), External Secrets/Vault \\
+Retrieval / Vector & Qdrant, Milvus, Weaviate, PostgreSQL+pgvector; hybrid BM25+dense; cross-encoders \\
+Backend / APIs & Python 3.11, \textbf{Django 5 + DRF}, FastAPI/Litestar, SQLAlchemy 2.0, Pydantic v2, OpenAPI, GraphQL (Strawberry) \\
+Eventing / Caching & Kafka/Redpanda, NATS JetStream; Redis/RedisJSON; Celery/Dramatiq for async tasks \\
+Parsing / Document AI & unstructured, PyMuPDF, PDFMiner, Microsoft IDP, PaddleOCR; LayoutParser; OpenCV \\
+Eval / Guardrails & RAGAS, DeepEval, TruLens, LangSmith/Langfuse traces; Guardrails; golden sets \& non-régression E2E \\
+Observabilité / Plateforme & OpenTelemetry, Prometheus \& Grafana, Loki/Tempo, Jaeger; budgets coût/token \& SLO P95/P99 \\
+DevSecOps / Sécurité & Docker/OCI, GitLab CI, Vault/Secrets Manager, OPA, Trivy, Cosign/Sigstore, SBOM (Syft/Grype), SLSA \\
+Frontend & Next.js 14/15 (RSC), React 18, TypeScript, tRPC/TanStack Query, shadcn/ui, Vite \\
+\end{tabular}
+\vspace{0.5cm}
+
+
+
+
+
+
+
+
+
+
+
+\normalsize
+\section*{Centres d'intêret}
+\begin{tabular}{>{\footnotesize\bfseries}r >{\footnotesize}p{0.55\textwidth}}
+    Sport & Football, Boxe, Tennis \\
+    Société & Jeux d'échecs \\
+    Musique & Batterie, Derbouka (percussion orientale/maghrébine), IA pour la musique ( Séparation, synthèse..etc)
+\end{tabular}
+\end{minipage}
+
+\vspace{2em}
+
+\switchcolumn
+
+\begin{minipage}[t]{\rightcolwidth}
+\normalsize
+\section*{Projets}
+
+\begin{tabular}{r| p{0.6\textwidth} c}
+
+
+\cvevent{2025}{T-SQL Assistant — Optimisation ETL (GSD)}{Lead Dev}{BNP Paribas ITG}{
+\textbf{Problématique :} Réduire temps ETL sans changer la sémantique des procédures T-SQL. Création de procédures à partir d'un besoin.\newline
+\textbf{Gains} constatés ≈ 40–50\% P50/P95\newline
+\textbf{Livrable :} Optimiseur \textbf{multi-agents} + \textbf{connecteur SSIS} (.dtsx) pour lignée/ordonnancement/priorisation SLA ; sandbox (dry-run, diffs signés), artefacts versionnables.\newline
+\textbf{Scope :} \textbf{Full-stack}.\newline
+\textbf{Stack :} React/TS ; \textbf{Django/DRF} + \textbf{FastAPI} (workers LLM) ; SSIS metadata connector ; SQL Server (Query Store, DMVs, Extended Events) ;
+}{bnp_logo1.jpg} \\
+
+\cvevent{2025}{Mise en correspondance profil-appel d'offre}{Tech Lead}{ADBI}{
+\textbf{Problématique :} Classer les profils les plus pertinents pour des RFP à partir de documents hétérogènes.\newline
+\textbf{Livrable :} Pipeline doc-processing + scoring, UI de sélection/justification, CI/CD cloud.\newline
+\textbf{Scope :} \textbf{Full-stack}.\newline
+\textbf{Stack :} React/TS ; \textbf{Django/DRF} (core) + \textbf{FastAPI} (LLM) ; Docling ; bge-reranker ; OVHCloud ; GitHub Actions.
+}{adbi_logo.jpg} \\
+
+
+\cvevent{2024}{PRODSEC: Détecteur de mot de passe}{Tech Lead}{BNPP ITG}{
+\textbf{Problématique :} Détecter mots de passe/secrets dans des segments courts à \textbf{très grande échelle} et \textbf{faible latence}.\newline
+\textbf{Livrable :} Service d’inférence + pipeline de validation ; alerting ; suivi précision/recall.\newline
+\textbf{Modèles/Agents :} \textbf{ModernBERT}/\textbf{GliNER} (classification) + heuristiques.
+\textbf{Scope :} \textbf{Full-stack}.\newline
+\textbf{Stack :} React (console légère) ; \textbf{Django/DRF} (core) + \textbf{FastAPI} (LLM, SSE) ; Celery+Redis ; Prometheus/Grafana ; GitLab CI.
+}
+{bnp_logo1.jpg} \\
+
+
+
+\cvevent{2023}{Réalisation d'un chatbot expert ESG}{Contributeur}{BNPP Securities \& Services}{
+\textbf{Problématique :} Assistant ESG compact et fiable pour juristes.\newline
+\textbf{Livrable :} Modèle distillé + jeux \textit{golden} et benchmarks ; prototype API avec réponses \textbf{sourcées}.\newline
+\textbf{Scope :} \textbf{Backend}.\newline
+\textbf{Stack :} API \textbf{Django/DRF (core)} + \textbf{FastAPI} (LLM); PEFT (LoRA/QLoRA) ; Qdrant/pgvector ; MLflow ; GitLab CI.
+}
+{bnp_logo1.jpg} \\
+
+
+
+\end{tabular}
+\end{minipage}
+
+\end{paracol}
+
+
+
+
+
+
+
+
+
+
+
+
+\newpage
+
+\begin{paracol}{2}
+
+\footnotesize
+
+
+\switchcolumn
+
+\begin{minipage}[t]{\rightcolwidth}
+\normalsize
+\section*{Projets}
+
+\begin{tabular}{r| p{0.6\textwidth} c}
+
+
+\cvevent{2025}{RIIF — Investor Copilot}{Contributeur}{BNP Paribas ITG}{
+\textbf{Problématique :} Aller au-delà d’une FAQ : interroger \textbf{URD}, résultats et Q\&A passées sous forte contrainte de confidentialité pré-publication.\newline
+\textbf{Livrable :} Chatbot investisseur ; parsing \textbf{layout-aware} précis ; réponses \textbf{sourcées} ; recherche web contrôlée ; SSO/RBAC/chiffrement/audit.\newline
+\textbf{Modèles/Agents :} RAG agentique ; \textbf{Mistral on-prem} privilégié, sinon \textbf{Azure OpenAI}.\newline
+\textbf{Scope :} \textbf{Backend }.\newline
+\textbf{Stack :} React/TS ; \textbf{Django/DRF (core)} + \textbf{FastAPI} (LLM) ; LangGraph ; Qdrant/pgvector ; GitLab CI.
+}{bnp_logo1.jpg} \\
+
+
+
+
+
+\cvevent{2024}{TPTRM — Éditeur de contrats assisté par IA}{Contributeur}{BNPP ITG}{
+\textbf{Problématique :} Assister la \textbf{rédaction/validation} de clauses avec traçabilité stricte.\newline
+\textbf{Livrable :} Extraction d’obligations ; propositions de variantes ; \textbf{diff} et \textbf{audit} des modifications ; résumés/checklists.\newline
+\textbf{Modèles/Agents :} RAG + génération contrôlée ; \textbf{Mistral}/\textbf{Azure} .\newline
+\textbf{Scope :} \textbf{Backend}.\newline
+\textbf{Stack :} \textbf{Django/DRF (core)} + \textbf{FastAPI} (LLM) ; LangGraph ; PyMuPDF/PDFMiner ; Qdrant ; WebSSO ; GitLab CI.
+}
+{bnp_logo1.jpg} \\
+
+
+
+
+
+\cvevent{2023}{Validation automatique de notes de frais}{Tech Lead}{ADBI}{
+\textbf{Problématique :} Extraire/valider les informations clés de factures/notes de frais et \textbf{automatiser} la validation dans le CRM.\newline
+\textbf{Livrable :} Extraction (OCR+heuristiques) ; contrôles de conformité (règles/seuils, pièces jointes) ; \textbf{validation CRM} via connecteurs ; logs/rapports d’exception.\newline
+\textbf{Modèles/Agents :} OCR/IDP (docTR/PaddleOCR), règles ; LLM \textbf{Mistral} pour cas ambigus.\newline
+\textbf{Scope :} \textbf{Full-stack}.\newline
+\textbf{Stack :} React (console) ; \textbf{Django/DRF (core)} + \textbf{FastAPI} (LLM) ; PyMuPDF ; docTR/PaddleOCR ; Pydantic ; PostgreSQL ; Webhooks CRM ; GitHub Actions ; Docker.
+}{adbi_logo.jpg} \\
+
+\end{tabular}
+\end{minipage}
+
+\end{paracol}
+
+\vfill{} % Espace avant le pied de page
+
+%----------------------------------------------------------------------------------------
+%	FINAL FOOTER
+%----------------------------------------------------------------------------------------
+
+\end{document}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

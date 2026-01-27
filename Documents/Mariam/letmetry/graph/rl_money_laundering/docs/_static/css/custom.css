@@ -1,0 +1,46 @@
+:root {
+    --rl-docs-hero-bg: linear-gradient(120deg, rgba(55, 118, 171, 0.18), rgba(246, 158, 30, 0.18));
+}
+
+.hero-banner {
+    margin: 2rem 0 2.5rem;
+    padding: 2.5rem;
+    background: var(--rl-docs-hero-bg);
+    border-radius: 16px;
+    box-shadow: 0 12px 24px rgba(36, 41, 46, 0.08);
+}
+
+.hero-banner h1 {
+    margin-top: 0;
+    font-size: 2.5rem;
+    font-weight: 700;
+}
+
+.hero-banner p {
+    font-size: 1.1rem;
+    max-width: 50rem;
+}
+
+.sd-card {
+    border-radius: 14px;
+    box-shadow: 0 8px 16px rgba(15, 23, 42, 0.08);
+}
+
+.sd-card .sd-card-header {
+    font-weight: 600;
+}
+
+.sd-btn.sd-btn-primary {
+    background-color: #3776ab;
+    border-color: #3776ab;
+}
+
+.sd-btn.sd-btn-secondary {
+    border-color: rgba(55, 118, 171, 0.4);
+    color: #3776ab;
+}
+
+.sd-badge {
+    background-color: rgba(55, 118, 171, 0.12);
+    color: #1f2937;
+}

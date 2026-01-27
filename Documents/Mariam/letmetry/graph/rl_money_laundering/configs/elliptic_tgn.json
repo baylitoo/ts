@@ -1,0 +1,97 @@
+{
+  "name": "elliptic_tgn",
+  "dataset_type": "elliptic",
+  "dataset_path": "data/elliptic",
+  "include_unlabeled": true,
+  "agent": {
+    "state_dim": 64,
+    "action_dim": 6,
+    "learning_rate": 0.0005,
+    "gamma": 0.99,
+    "epsilon_start": 1.0,
+    "epsilon_end": 0.2,
+    "epsilon_decay": 0.9996,
+    "buffer_capacity": 120000,
+    "use_prioritized_replay": true,
+    "hidden_dims": [
+      256,
+      256,
+      128
+    ],
+    "device": "cuda",
+    "agent_type": "qrdqn",
+    "num_quantiles": 128,
+    "n_step": 5,
+    "risk_measure": "mean",
+    "prioritized_alpha": 0.7,
+    "prioritized_beta": 0.5,
+    "prioritized_beta_annealing": 0.0005,
+    "positive_fraction": 0.35,
+    "use_double_dqn": true,
+    "use_guided_exploration": true,
+    "exploration_temperature": 1.0,
+    "gradient_clip": 1.0
+  },
+  "gnn": {
+    "node_feature_dim": 172,
+    "gnn_type": "tgn",
+    "embedding_dim": 64,
+    "hidden_channels": 128,
+    "num_layers": 3,
+    "history_dim": 32,
+    "dropout": 0.1,
+    "heads": 4,
+    "device": "cuda",
+    "multi_branch": false,
+    "use_dqn_enhancement": false,
+    "num_classes": 2,
+    "time_attributes": [
+      "time",
+      "timestamp",
+      "time_step"
+    ]
+  },
+  "environment": {
+    "max_steps": 25,
+    "max_neighbors": 5,
+    "intrinsic_reward_weight": 0.6,
+    "step_penalty": -0.01,
+    "fraud_reward": 12.0,
+    "false_alarm_penalty": -12.0
+  },
+  "trainer": {
+    "num_episodes": 5000,
+    "batch_size": 128,
+    "eval_frequency": 150,
+    "checkpoint_frequency": 300,
+    "target_update_frequency": 25,
+    "curriculum_schedule": [
+      1.0,
+      0.9,
+      0.8,
+      0.7,
+      0.6,
+      0.5,
+      0.4,
+      0.3,
+      0.2,
+      0.1
+    ],
+    "max_steps_per_episode": 25,
+    "num_eval_episodes": 50,
+    "multi_branch": {
+      "enabled": false,
+      "variant": "improved",
+      "lambda_branch": 0.25,
+      "epsilon_dqn": 0.4,
+      "beta_reg": 0.1,
+      "temporal_decay": 0.1,
+      "adaptive_weighting": true,
+      "learning_rate": 0.0005,
+      "log_frequency": 50
+    }
+  },
+  "output_dir": "outputs/elliptic_tgn",
+  "seed": 42,
+  "nrows": null
+}

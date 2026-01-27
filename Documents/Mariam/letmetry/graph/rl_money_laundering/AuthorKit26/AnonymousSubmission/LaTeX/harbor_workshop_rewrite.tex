@@ -1,0 +1,115 @@
+% File: harbor_workshop_rewrite.tex
+\documentclass[letterpaper]{article}
+\usepackage[submission]{aaai2026} % AAAI-26 (double-blind)
+\usepackage{times}
+\usepackage{helvet}
+\usepackage{courier}
+\usepackage[hyphens]{url}
+\usepackage{graphicx}
+\urlstyle{rm}
+\def\UrlFont{\rm}
+\usepackage{natbib}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{amsmath,amssymb}
+
+\pdfinfo{
+/Title (HARBOR: Contracts, Metrics, and Modular Pipelines for Deployable Temporal-Graph Learning)
+/Author (Anonymous)
+}
+
+\setcounter{secnumdepth}{2}
+
+\title{HARBOR: Contracts, Metrics, and Modular Pipelines\\for Deployable Temporal-Graph Learning}
+
+\author{
+Anonymous Authors\\
+Anonymous Affiliation\\
+\texttt{anonymous@institution.edu}
+}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Temporal heterogeneous graphs (THGs) drive high-risk banking workloads such as anti-money-laundering (AML) investigations, routing compliance, and sanctions screening. Existing graph models focus on predictive accuracy, leaving privacy, replayability, fairness, and latency as afterthoughts. We present \textsc{HARBOR}, a deployability-first framework that unifies \emph{training}, \emph{comparison}, and \emph{deployment} for temporal-graph learning. The architecture rests on three pillars: (i) \emph{dataset contracts} that produce replayable temporal slices with provenance fingerprints and class-prior controls, tracked by data/version control backends; (ii) \emph{modular encoder/agent registries} that cover state-of-the-art message-passing models (GraphSAGE, GAT, RMGANets) while keeping extension points for temporal GNNs or foundation encoders, and expose risk-aware reinforcement-learning heads (QR-DQN, CVaR); and (iii) \emph{governance metrics} that quantify audit completeness, fairness drift, privacy telemetry, and latency for promotion decisions. The accompanying (anonymized) implementation offers CLI-driven experiment orchestration, automated manifest capture, DVC-backed dataset/model lineage, and contract checks across AMLNet and Elliptic case studies. This position paper distills the interfaces, metrics, and engineering practices needed to make temporal-graph systems verifiable, comparable, and production-ready.
+\end{abstract}
+
+\section{Motivation and Position}
+\label{sec:intro}
+Temporal graphs encode entities, interactions, and money flows with typed nodes/edges, timestamps, and rapidly evolving schemas. Production teams must answer regulators about provenance, fairness, and latency before shipping any model. Yet most THG research---TGN, DyRep, EvolveGCN~\citep{rossi2020tgn,trivedi2019dyrep,pareja2020evolvegcn}---optimizes embeddings and leaves deployability to bespoke glue. Our position is straightforward: \emph{treat deployability as a contract, not a post-hoc checklist}. Every dataset slice, encoder, and policy should emit canonical metadata that allows exact replay, risk audits, and portable fairness/privacy checks.
+
+\section{Contracts and Interfaces}
+\label{sec:contracts}
+Given raw temporal events, the dataset fabric emits:
+\[
+(G, X, Y, M, \Pi, \phi),
+\]
+where $G$ is a time-stamped directed multigraph, $X$ per-node/edge features, $Y$ labels (possibly missing), $M$ availability masks, $\Pi$ directive identifiers (business rules, legal constraints), and $\phi = \mathrm{SHA256}(\texttt{schema} \Vert \texttt{raw hashes} \Vert \texttt{config} \Vert \texttt{seed})$ captures provenance.
+
+\paragraph{Encoder Contract.} Adapters map $(G,X,t)\mapsto h_t$ while exposing \texttt{state\_dim()}, temporal attribution hooks, and device metadata. Implementations include GraphSAGE, GAT, and an internal multi-branch encoder derived from RMGANets. All current adapters operate on static message-passing layers fed with explicitly engineered temporal features rather than bespoke temporal GNN modules. Each adapter registers latency probes and feature expectations so mismatches surface during CI.
+
+\paragraph{Agent Contract.} Policy heads accept $(h_t,\Pi)$ and output actions plus telemetry:
+\[
+\tau = \{\text{logits or quantiles},\, \text{risk\_measure},\, \Pi,\, \phi,\, \text{config\_hash}\}.
+\]
+Distributional QR-DQN with configurable CVaR~\citep{dabney2018distributional,chow2015risk} is the default; additional heads can plug in by implementing the same telemetry schema. All payloads are immutable and indexed for replay.
+
+\paragraph{Governance Metrics.} Runs must report guardrail coverage (directives exercised), audit completeness (required fields present), replay fidelity (distance between live and replayed policies), latency bins (p50/p95/p99 end-to-end), privacy telemetry (PII redaction recall/precision), and fairness drift (equalized-odds gap across jurisdictions).
+
+\section{Training, Comparison, and Deployment Workflow}
+\label{sec:workflow}
+\textbf{Registry-driven coverage of SOTA.}
+Encoders and agents register with schema-checked factories. Today, GraphSAGE, GAT, and an internal RMGANets-derived multi-branch model are included; adapter templates and unit tests allow practitioners to add temporal GNNs (e.g., TGAT/TGN) or transformer-based encoders while inheriting the same contracts.
+
+\textbf{CLI orchestration.}
+A unified command-line interface launches experiments, portfolios of hyper-parameter sweeps, and evaluation suites. Configuration overrides allow rapid substitution of datasets, encoders, risk measures, or governance thresholds without editing code.
+
+\textbf{Comparison dashboards.}
+Each run records metrics into structured manifests that a comparison service aggregates into tables/plots (AUC, latency, fairness drift, audit completeness). Users can slice by encoder, curriculum stage, or directive set to support model reviews.
+
+\textbf{Deployment packaging.}
+Promotion-ready bundles include the model checkpoint, configuration snapshot, telemetry schema, and governance scorecard. Artifacts are exportable to downstream gateways via a thin API wrapper; dry-run deployment scripts replay bundles in staging before production rollout.
+
+\section{Reference Implementation Overview}
+\label{sec:implementation}
+An anonymized codebase (provided as supplementary material) realises these contracts through configuration-driven pipelines. \texttt{ExperimentConfig} objects specify dataset loaders, feature pipelines, encoder types, and agent settings. The pipeline materializes AMLNet/Elliptic graphs, encodes temporal context via engineered features (step deltas, business-hour ratios, velocity), augments them with network motifs, constructs Gymnasium environments, and instantiates the requested encoders/agents. Every run writes \texttt{config.json}, provenance fingerprints, directive manifests, latency traces, and telemetry tables alongside checkpoints. A DVC-backed storage layer versions raw datasets, derived features, model checkpoints, and telemetry logs, enabling reproducible rollbacks and diffs. Continuous integration verifies field coverage, provenance hashes, replay determinism, schema compatibility, and DVC lineage before artifacts are accepted.
+
+\section{Evaluation Blueprint}
+\label{sec:evaluation}
+To compare models under the same contracts, we propose the following evaluation protocol:
+\begin{enumerate}
+    \item \textbf{Replay fidelity.} Freeze seeds/configs, re-run policies, and report Wasserstein distance between live and replayed action distributions.
+    \item \textbf{Latency budget.} Measure encoder + policy + telemetry write latency under production batch sizes; report p50/p95/p99.
+    \item \textbf{Audit completeness.} Compute fraction of required telemetry fields present (target $100\%$; fail-closed otherwise).
+    \item \textbf{Privacy metrics.} Report redaction recall/precision across languages and reviewer-effort deltas (hours saved).
+    \item \textbf{Fairness drift.} Track FPR/TPR gaps across jurisdictions over time, highlighting violations of documented directives.
+    \item \textbf{Risk posture.} Compare CVaR/mean policies on rare-event recall, false-positive rate, and business rule adherence.
+\end{enumerate}
+These metrics accompany conventional ML measures (AUC, PR curves) but foreground deployability.
+
+\section{Case Study: AML Under Label Scarcity}
+\label{sec:aml}
+AMLNet and Elliptic exemplify sparse, delayed labels. HARBOR implements:
+\paragraph{Class-prior restoration.} The \texttt{--include-unlabeled} toggle retains background nodes, keeping fraud priors below $0.3\%$. Batches enforce priors within $\pm\epsilon$ while respecting temporal coherence and entity-disjoint splits.
+\paragraph{Risk-aware rewards.} Hybrid rewards combine calibrated true-positive bonuses, false-positive costs, and exploration incentives; coefficients are versioned with directives and logged in telemetry.
+\paragraph{Multi-branch encoders.} The internal RMGANets derivative supports auxiliary heads (cross-entropy, focal, DQN) with adaptive weighting. Ablations swap GraphSAGE/GAT baselines while the registry keeps logging consistent.
+\paragraph{Feature integrity.} Tests pin node/edge schemas, timestamp monotonicity, and normalization statistics; violations fail CI and block artifact promotion.
+
+\section{Societal and Ethical Considerations}
+\label{sec:ethics}
+\textbf{Privacy.} Telemetry logs redaction policies, language coverage, and masking outcomes. Missing fields halt deployments.
+\textbf{Fairness.} Directive IDs encode fairness thresholds; evaluation reports equalized-odds gaps and their trends.
+\textbf{Accountability.} Immutable $(\tau,\phi)$ pairs enable post-hoc investigation; canary replays and human-in-the-loop rejection remain first-class actions.
+
+\section{Discussion and Roadmap}
+\label{sec:discussion}
+The architecture is intentionally encoder-agnostic: upcoming work focuses on asynchronous telemetry spooling, manifest signing, deployable container images, and scripted canary rehearsals. We are exploring adapters for temporal transformers and diffusion-based planners while keeping the same contracts. Community contributions can target new datasets or risk metrics without altering the governance surface.
+
+\section{Conclusion}
+\label{sec:conclusion}
+\textsc{HARBOR} codifies how temporal-graph learning can become deployable: dataset contracts guarantee provenance and replay, adapter registries keep models swappable, and governance metrics quantify safety, fairness, and latency. The anonymized implementation shows these ideas running on AML workloads today, offering a blueprint for researchers and practitioners who need to move beyond accuracy toward verifiable, auditable temporal-graph systems.
+
+\bibliographystyle{aaai2026}
+\bibliography{aaai2026}
+\end{document}

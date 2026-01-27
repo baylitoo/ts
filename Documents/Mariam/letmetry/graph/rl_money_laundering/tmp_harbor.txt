@@ -1,0 +1,178 @@
+% File: harbor_w24_position.tex
+\documentclass[letterpaper]{article}
+\usepackage[submission]{aaai2026} % AAAI-26 (double-blind)
+\usepackage{times}
+\usepackage{helvet}
+\usepackage{courier}
+\usepackage[hyphens]{url}
+\usepackage{graphicx}
+\urlstyle{rm}
+\def\UrlFont{\rm}
+\usepackage{natbib}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs} % if this conflicts with AAAI, remove and use plain LaTeX tables
+
+\pdfinfo{
+/Title (HARBOR: A Position Paper on Secure Temporal-Graph Guardrails for Banking AI)
+/Author (Anonymous)
+}
+
+\setcounter{secnumdepth}{2}
+
+\title{HARBOR: A Position Paper on Secure Temporal-Graph Guardrails\\for Banking AI under Temporal Heterogeneity}
+
+\author{
+Anonymous Authors\\
+Anonymous Affiliation\\
+\texttt{anonymous@institution.edu}
+}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Real-world banking AI must satisfy \emph{deployability} constraints---replayability, privacy, fairness, auditability, and latency---not just accuracy. We present \textsc{HARBOR}, a minimal set of \emph{system contracts} and \emph{governance telemetry} for temporal heterogeneous-graph (THG) workloads (fraud/AML, routing, screening). \textsc{HARBOR} standardizes (i) replayable temporal slices with provenance fingerprints, (ii) encoder adapters for drop-in temporal GNNs, (iii) risk-aware policy heads using QR-DQN/CVaR with governance-ready logs, and (iv) guardrail metrics spanning privacy, fairness, audit completeness, replay fidelity, and latency. We instantiate the contracts on two AML corpora and show how class-prior preservation and unlabeled-node handling integrate into deployable evaluation. This is a position paper: we specify interfaces, risk objectives, and measurement protocols so future models can plug into banking guardrails with minimal glue code.
+\end{abstract}
+
+\section{Position: Deployability as a First-Class Contract}
+\label{sec:position}
+Temporal heterogeneous graphs (THGs) arise across banking workflows: transactions, counterparties, suppliers, and sanctions with typed nodes/edges and continuous-time events. Most THG models (e.g., TGN, DyRep, EvolveGCN; \citealt{rossi2020tgn,trivedi2019dyrep,pareja2020evolvegcn}) optimize representation quality but externalize deployability (privacy, fairness, latency, audit). Our position: \emph{treat deployability as a stable systems contract that outlives any particular encoder or RL algorithm}. 
+
+An anonymized reference implementation (bundled with the submission) instantiates these contracts in a modular stack: a configuration-driven pipeline factory, dataset/feature registries, encoder and agent adapters (GraphSAGE, GAT, an internal multi-branch encoder, QR-DQN), and governance hooks that plug into an internal governance gateway (details anonymized). \textsc{HARBOR} specifies the shared substrate that both standalone experiments and governed deployments consume.
+
+We organize the position around three axes mirrored in the codebase: (1) \textbf{dataset fabric} that guarantees replayable temporal slices with provenance and class-prior controls, (2) \textbf{model adapters} that keep encoders/agents swappable while exposing risk measures, and (3) \textbf{governance plane} metrics and telemetry that make policies certifiable for production.
+
+We propose \textbf{\textsc{HARBOR}}---a small set of mandatory I/O fields and telemetry that any dataset slice, encoder, and policy must emit. This enables:
+(i) immutable audits and exact replays,
+(ii) risk-aware control bound by policy directives,
+(iii) portable privacy/fairness checks,
+(iv) apples-to-apples latency measurement.
+
+\section{System Contracts (Stable Interfaces)}
+\label{sec:contracts}
+Implementations may vary; \emph{contracts do not}. Given raw temporal events, the Dataset Fabric emits:
+\[
+(G, X, Y, M, \Pi, \phi),
+\]
+where $G=(V,E,t)$ is the time-stamped graph; $X$ are features; $Y$ labels (possibly missing); $M$ are masks for splits and label-availability; $\Pi$ is the active \emph{directive set} (policy IDs, e.g., block-rate caps, fairness thresholds); and $\phi$ is a provenance fingerprint:
+\[
+\phi = \mathrm{SHA256}\big(\texttt{schema.json} \Vert \texttt{raw\_hashes} \Vert \texttt{config} \Vert \texttt{seed}\big).
+\]
+
+\paragraph{Encoder Adapter.}
+Maps $(G,X,t)\mapsto h_t \in \mathbb{R}^d$ and implements
+\texttt{state\_dim()} plus \texttt{explain($h_t$)} $\rightarrow$ temporal attributions (feature importance with timestamps).
+Adapters cover GraphSAGE, TGAT/TGN, or temporal transformers.
+
+\paragraph{Agent Head.}
+Maps $(h_t,\Pi)\mapsto a_t$ and emits \emph{telemetry} 
+$\tau=\{\text{logits or quantiles},\ \text{directive\_id},\ \text{thresholds},\ \text{version},\ \phi\}$ \emph{before} actuation. Telemetry is immutable and stored with retention consistent with banking policy.
+
+\paragraph{Reference Implementation (Anonymized).}
+The pipeline assembles these contracts from configuration dataclasses: an \texttt{ExperimentConfig} specifies dataset/feature/agent choices, loaders materialize AMLNet/Elliptic graphs, feature extractors add temporal + network descriptors, and encoder/agent registries instantiate the matching adapters. Each run persists the manifest (\texttt{config.json}), the provenance fingerprint $\phi$, and the directive set $\Pi$ alongside checkpoints. CI checks verify contract compliance (field coverage, provenance hashes, redaction policies).
+
+\begin{table}[t]
+\centering
+\begin{tabular}{@{}lll@{}}
+\toprule
+Field & Type & Purpose \\
+\midrule
+$\phi$ & 32-byte hex & Replay/audit fingerprint \\
+$\Pi$  & list[str] & Active directives (IDs) \\
+$M$    & bool masks & Split + label-availability \\
+$\tau$ & dict & Logits/quantiles + config snapshot \\
+\bottomrule
+\end{tabular}
+\caption{Minimal fields required by \textsc{HARBOR} for governance and replay.}
+\label{tab:contract}
+\end{table}
+
+\section{Risk-Aware Control: QR-DQN with CVaR}
+\label{sec:risk}
+We expose risk controls through distributional RL. Let $\mathcal{Z}_\theta(s,a)$ approximate returns via $N$ quantiles $\{\hat{Z}_{\theta,i}\}_{i=1}^N$ \citep{dabney2018distributional}. With targets $\{z'_j\}$ from $r+\gamma \mathcal{Z}_{\bar\theta}(s',a^\star)$, the quantile Huber loss is
+\begin{equation}
+\mathcal{L}_{\text{QR}}(\theta)=\frac{1}{N}\!\sum_{i=1}^N \sum_{j=1}^N
+\rho_{\kappa}\!\left(z'_j - \hat{Z}_{\theta,i}\right)\!
+\Big|\tau_i - \mathbb{I}\{z'_j - \hat{Z}_{\theta,i} < 0\}\Big|,
+\end{equation}
+with $\tau_i=\frac{i-0.5}{N}$. For risk-sensitive action selection, we use the CVaR tail:
+\begin{equation}
+a^\star = \arg\max_{a}\ \text{CVaR}_\alpha\!\left(\mathcal{Z}_\theta(s,a)\right)
+= \arg\max_{a}\ \frac{1}{\lfloor \alpha N \rfloor}\!\sum_{i=1}^{\lfloor \alpha N \rfloor}\hat{Z}_{\theta,(i)}(s,a),
+\end{equation}
+where $\alpha\in(0,1]$ is boundable by governance directives (e.g., conservative tails for certain jurisdictions). See \citet{chow2015risk} for CVaR in RL.
+
+\section{Guardrail Metrics (Algorithmic, Systemic, Societal)}
+\label{sec:metrics}
+We require all runs to report:
+
+\textbf{(M1) Guardrail Coverage.}
+\% of directive IDs exercised at least once in the replay suite.
+
+\textbf{(M2) Audit Completeness.}
+Share of required fields present in $\tau$ and $\phi$; target $100\%$ (fail-closed if missing).
+
+\textbf{(M3) Replay Fidelity.}
+$\mathrm{EMD}\big(\pi_{\text{live}}(\cdot|s),\pi_{\text{replay}}(\cdot|s)\big)$ averaged over sampled states (frozen seed/config).
+
+\textbf{(M4) Latency Bins.}
+End-to-end online inference (encoder + policy + governance write): p50/p95/p99 with batch size, window size, model size, GPU.
+
+\textbf{(M5) Privacy Telemetry.}
+PII redaction recall/precision, language breakdown, and reviewer-effort deltas (hours saved) under documented policies.
+
+\textbf{(M6) Fairness Drift.}
+Per-jurisdiction (or sensitive proxy) disparity of FPR/TPR at a fixed operating point; report equalized-odds gap and trend.
+
+\section{Reference Implementation \& Production Readiness}
+\label{sec:implementation}
+\textbf{Modular pipeline.}
+\texttt{ExperimentConfig} + the pipeline assemble dataset loaders (AMLNet, Elliptic, synthetic), feature extractors (temporal statistics, network motifs), encoder adapters (GraphSAGE, GAT, internal multi-branch), and agent heads (DQN, QR-DQN) into a reproducible training stack. Swapping any module is a configuration change; manifests are persisted automatically.
+
+\textbf{Governance hooks.}
+Each training/evaluation run emits immutable manifests, provenance hashes, and telemetry payload schemas. Checkpoint managers embed the directive set $\Pi$, the fingerprint $\phi$, and QR-DQN risk settings inside artifact metadata so external governance gateways can validate candidates before deployment.
+
+\textbf{Testing + CI (in-flight).}
+Unit/integration suites enforce contract compliance (field coverage, replay fidelity, latency collectors). Automated provenance checks, schema linting, and differential testing replay stored manifests to guarantee determinism.
+
+\textbf{Operational roadmap.}
+Asynchronous audit spooling with bounded queues, manifest signing, deploy-ready container images, and scripted canary rehearsals are included in the roadmap (details anonymized for review).
+
+\section{Case Slice: AML under Label Scarcity}
+\label{sec:aml}
+\paragraph{Class-Prior Restoration.}
+Labeled-only AML slices inflate fraud priors versus production reality. We enable \texttt{--include-unlabeled}: unlabeled nodes are masked in supervised loss but remain navigable for RL exploration. Let $\hat{p}_{\text{fraud}}=\frac{1}{|V|}\sum_v \mathbb{I}[y_v=1]$. We report $\hat{p}_{\text{fraud}}$ (Wilson 95\% CI) before/after and enforce batch priors within $\pm\epsilon$ via a sampler that respects temporal coherence and entity-disjoint splits.
+
+\paragraph{Risk-Aligned Rewards.}
+Hybrid rewards combine high-confidence TP bonuses, calibrated FP penalties, and exploration bonuses for rarely visited intermediaries; coefficients are bound to business directives in $\Pi$ and recorded in $\tau$.
+
+\paragraph{Encoder/Agent Choices.}
+The repository packages RMGANets with an adapted multi-branch loss and QR-DQN heads tuned for heavy-tailed returns. Ablations cover SAGE/GAT baselines, RMGANets with/without auxiliary branches, and risk measures (mean, median, CVaR$_\alpha$). All runs share the same contracts, enabling guardrail metrics to compare architecture swaps fairly.
+
+\paragraph{Feature Integrity.}
+Versioned tests assert stable IDs/dtypes/timestamps and persist normalization stats so encoders observe consistent distributions despite upstream drift.
+
+\section{Societal Impact \& Governance}
+\label{sec:societal}
+\textbf{Privacy.} We log masking policies and language coverage, and require auditability of redaction outcomes (M5).\\
+\textbf{Fairness.} We expose directive-level constraints and report disparity trends (M6).\\
+\textbf{Accountability.} Immutable $\tau$+\,$\phi$ enable post-hoc review; canary replays are mandatory before rollout.\\
+\textbf{Human Oversight.} Reject options and escalation routes are first-class actions; measured as part of coverage (M1).
+
+\section{Limitations}
+\label{sec:limits}
+\textsc{HARBOR} assumes reliable timestamps and stable directive registries; unlabeled-node inclusion can bias exploration if unlabeled $\neq$ negative. Governance logging adds modest latency overhead; we mitigate via async writes and bounded queues. This paper specifies \emph{contracts and metrics}; exhaustive encoder/policy benchmarking is out-of-scope for a 4-page position.
+
+\section{Related Work}
+\label{sec:rw}
+Temporal GNNs: TGN, DyRep, EvolveGCN~\citep{rossi2020tgn,trivedi2019dyrep,pareja2020evolvegcn}. Distributional RL and risk: \citet{dabney2018distributional,chow2015risk}. Systems for scalable RL: RLlib~\citep{liang2018rllib}. AML on graphs: Elliptic dataset~\citep{weber2019aml}. Our focus differs: \emph{deployment contracts and governance telemetry} for THG workloads in finance.
+
+\section{Conclusion}
+\label{sec:conclusion}
+We argue for deployability-first interfaces for temporal-graph banking AI. \textsc{HARBOR} specifies minimal contracts and guardrail metrics so future encoders and policies remain swappable under privacy/fairness, replayability, and latency constraints. The reference implementation powers internal studies and connects to (but is not subsumed by) an internal governance gateway; ongoing work hardens production checklists (asynchronous audits, manifest signing) and releases adapters plus governance schemas to encourage reproducible deployments.
+
+\bibliographystyle{aaai2026}
+\bibliography{aaai2026}
+\end{document}

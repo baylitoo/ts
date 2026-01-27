@@ -1,0 +1,160 @@
+PS C:\Users\ADBIadmin\Documents\Mariam\graph\rl_money_laundering\src> python -m uv run mypy ./
+rl_money_laundering\datasets\base.py:10: error: Library stubs not installed for "networkx"  [import-untyped]
+rl_money_laundering\datasets\base.py:11: error: Library stubs not installed for "pandas"  [import-untyped]
+rl_money_laundering\evaluator.py:12: error: Skipping analyzing "sklearn.metrics": module is installed, but missing library stubs or py.typed marker  [import-untyped]
+rl_money_laundering\evaluator.py:34: error: Function is missing a return type annotation  [no-untyped-def]
+rl_money_laundering\evaluator.py:34: note: Use "-> None" if function does not return a value
+rl_money_laundering\evaluator.py:90: error: Incompatible types in assignment (expression has type "None", target has type "float")  [assignment]
+rl_money_laundering\evaluator.py:91: error: Incompatible types in assignment (expression has type "None", target has type "float")  [assignment]
+rl_money_laundering\evaluator.py:184: error: Missing type parameters for generic type "set"  [type-arg]
+rl_money_laundering\evaluator.py:185: error: Missing type parameters for generic type "set"  [type-arg]
+rl_money_laundering\evaluator.py:209: error: Incompatible types in assignment (expression has type "float", variable has type "int")  [assignment]
+rl_money_laundering\evaluator.py:231: error: Incompatible types in assignment (expression has type "floating[Any] | 
+float", target has type "float")  [assignment]
+rl_money_laundering\utils\features.py:11: error: Library stubs not installed for "networkx"  [import-untyped]
+rl_money_laundering\utils\features.py:56: error: Missing type parameters for generic type "dict"  [type-arg]        
+rl_money_laundering\utils\features.py:103: error: Function is missing a return type annotation  [no-untyped-def]    
+rl_money_laundering\utils\features.py:103: note: Use "-> None" if function does not return a value
+rl_money_laundering\utils\features.py:148: error: Call to untyped function "AMLNetFeatureExtractor" in typed context  [no-untyped-call]
+rl_money_laundering\utils\features.py:155: error: Missing type parameters for generic type "dict"  [type-arg]       
+rl_money_laundering\utils\features.py:231: error: Returning Any from function declared to return "ndarray[tuple[Any, ...], dtype[Any]]"  [no-any-return]
+rl_money_laundering\utils\experiment.py:42: error: Missing type parameters for generic type "list"  [type-arg]
+rl_money_laundering\utils\experiment.py:51: error: Missing type parameters for generic type "list"  [type-arg]
+rl_money_laundering\utils\experiment.py:190: error: Argument 2 to "savez" has incompatible type "**dict[str, ndarray[tuple[Any, ...], dtype[Any]]]"; expected "bool"  [arg-type]
+rl_money_laundering\utils\experiment.py:254: error: Returning Any from function declared to return "dict[str, Any]" 
+ [no-any-return]
+rl_money_laundering\features\temporal.py:14: error: Library stubs not installed for "networkx"  [import-untyped]    
+rl_money_laundering\features\temporal.py:16: error: Library stubs not installed for "pandas"  [import-untyped]      
+rl_money_laundering\features\network.py:15: error: Library stubs not installed for "networkx"  [import-untyped]
+rl_money_laundering\features\base.py:10: error: Library stubs not installed for "networkx"  [import-untyped]        
+rl_money_laundering\datasets\features.py:8: error: Library stubs not installed for "pandas"  [import-untyped]       
+rl_money_laundering\datasets\features.py:9: error: Skipping analyzing "sklearn.preprocessing": module is installed, 
+but missing library stubs or py.typed marker  [import-untyped]
+rl_money_laundering\datasets\elliptic.py:9: error: Library stubs not installed for "networkx"  [import-untyped]
+rl_money_laundering\datasets\elliptic.py:11: error: Library stubs not installed for "pandas"  [import-untyped]
+rl_money_laundering\datasets\elliptic.py:12: error: Skipping analyzing "sklearn.preprocessing": module is installed, but missing library stubs or py.typed marker  [import-untyped]
+rl_money_laundering\datasets\elliptic.py:50: error: Unsupported left operand type for / ("str")  [operator]
+rl_money_laundering\datasets\elliptic.py:50: note: Left operand is of type "Path | str"
+rl_money_laundering\datasets\elliptic.py:51: error: Unsupported left operand type for / ("str")  [operator]
+rl_money_laundering\datasets\elliptic.py:51: note: Left operand is of type "Path | str"
+rl_money_laundering\datasets\elliptic.py:52: error: Unsupported left operand type for / ("str")  [operator]
+rl_money_laundering\datasets\elliptic.py:52: note: Left operand is of type "Path | str"
+rl_money_laundering\datasets\elliptic.py:63: error: Unsupported left operand type for / ("str")  [operator]
+rl_money_laundering\datasets\elliptic.py:63: note: Left operand is of type "Path | str"
+rl_money_laundering\datasets\elliptic.py:68: error: Unsupported left operand type for / ("str")  [operator]
+rl_money_laundering\datasets\elliptic.py:68: note: Left operand is of type "Path | str"
+rl_money_laundering\datasets\elliptic.py:74: error: Unsupported left operand type for / ("str")  [operator]
+rl_money_laundering\datasets\elliptic.py:74: note: Left operand is of type "Path | str"
+rl_money_laundering\features\extractors.py:11: error: Library stubs not installed for "networkx"  [import-untyped]
+rl_money_laundering\features\elliptic_extractor.py:12: error: Library stubs not installed for "networkx"  [import-untyped]
+rl_money_laundering\datasets\amlnet.py:11: error: Library stubs not installed for "networkx"  [import-untyped]      
+rl_money_laundering\datasets\amlnet.py:12: error: Library stubs not installed for "pandas"  [import-untyped]        
+rl_money_laundering\datasets\amlnet.py:13: error: Skipping analyzing "sklearn.model_selection": module is installed, but missing library stubs or py.typed marker  [import-untyped]
+rl_money_laundering\datasets\amlnet.py:14: error: Skipping analyzing "sklearn.preprocessing": module is installed, but missing library stubs or py.typed marker  [import-untyped]
+rl_money_laundering\datasets\amlnet.py:49: error: Item "str" of "Path | str" has no attribute "parent"  [union-attr]rl_money_laundering\datasets\amlnet.py:51: error: List item 0 has incompatible type "Path | str"; expected "Path"  [list-item]
+rl_money_laundering\evaluation\budgeted_metrics.py:17: error: Skipping analyzing "sklearn.metrics": module is installed, but missing library stubs or py.typed marker  [import-untyped]
+rl_money_laundering\evaluation\budgeted_metrics.py:187: error: Argument 3 to "recall_at_k" of "BudgetedMetrics" has 
+incompatible type "signedinteger[Any]"; expected "int"  [arg-type]
+rl_money_laundering\evaluation\budgeted_metrics.py:220: error: Returning Any from function declared to return "float"  [no-any-return]
+rl_money_laundering\evaluation\budgeted_metrics.py:222: error: Function is missing a return type annotation  [no-untyped-def]
+rl_money_laundering\evaluation\budgeted_metrics.py:263: error: Function is missing a return type annotation  [no-untyped-def]
+rl_money_laundering\evaluation\budgeted_metrics.py:334: error: Function is missing a return type annotation  [no-untyped-def]
+rl_money_laundering\utils\graph.py:12: error: Library stubs not installed for "networkx"  [import-untyped]
+rl_money_laundering\utils\graph.py:15: error: Skipping analyzing "torch_geometric.data": module is installed, but missing library stubs or py.typed marker  [import-untyped]
+rl_money_laundering\utils\graph.py:69: error: Missing type parameters for generic type "dict"  [type-arg]
+rl_money_laundering\utils\graph.py:117: error: Incompatible types in assignment (expression has type "Tensor", variable has type "list[list[int]]")  [assignment]
+rl_money_laundering\utils\graph.py:118: error: Incompatible types in assignment (expression has type "Tensor", variable has type "list[list[Any]]")  [assignment]
+rl_money_laundering\utils\graph.py:120: error: Incompatible types in assignment (expression has type "Tensor", variable has type "list[list[int]]")  [assignment]
+rl_money_laundering\utils\graph.py:121: error: Incompatible types in assignment (expression has type "Tensor", variable has type "list[list[Any]]")  [assignment]
+rl_money_laundering\utils\checkpoint.py:214: error: Returning Any from function declared to return "dict[str, Any]" 
+ [no-any-return]
+rl_money_laundering\gnn_modules\to_gcm.py:14: error: Skipping analyzing "torch_geometric.nn": module is installed, but missing library stubs or py.typed marker  [import-untyped]
+rl_money_laundering\gnn_modules\to_gcm.py:151: error: Returning Any from function declared to return "Tensor"  [no-any-return]
+rl_money_laundering\gnn_modules\multi_branch_loss.py:99: error: Incompatible types in assignment (expression has type "HuberLoss", variable has type "L1Loss")  [assignment]
+rl_money_laundering\gnn_modules\multi_branch_loss.py:128: error: Returning Any from function declared to return "Tensor"  [no-any-return]
+rl_money_laundering\gnn_modules\multi_branch_loss.py:305: error: Unsupported operand types for < ("int" and Module) 
+ [operator]
+rl_money_laundering\gnn_modules\multi_branch_loss.py:305: note: Left operand is of type "Tensor | Module"
+rl_money_laundering\gnn_modules\multi_branch_loss.py:309: error: Unsupported operand type for unary - ("Tensor | Module")  [operator]
+rl_money_laundering\gnn_modules\multi_branch_loss.py:310: error: Incompatible types in assignment (expression has type "Tensor", variable has type "float")  [assignment]
+rl_money_laundering\gnn_modules\multi_branch_loss.py:311: error: Incompatible types in assignment (expression has type "Tensor", variable has type "float")  [assignment]
+rl_money_laundering\gnn_modules\multi_branch_loss.py:345: error: Unsupported operand types for + (Module and "int") 
+ [operator]
+rl_money_laundering\gnn_modules\multi_branch_loss.py:345: note: Left operand is of type "Tensor | Module"
+rl_money_laundering\gnn_modules\multi_branch_loss.py:345: error: Incompatible types in assignment (expression has type "Tensor | int", variable has type "Tensor | Module")  [assignment]
+rl_money_laundering\gnn_modules\hy_gcm.py:14: error: Skipping analyzing "torch_geometric.nn": module is installed, but missing library stubs or py.typed marker  [import-untyped]
+rl_money_laundering\gnn_modules\hy_gcm.py:119: error: Returning Any from function declared to return "Tensor"  [no-any-return]
+rl_money_laundering\gnn_modules\hy_gcm.py:180: error: Returning Any from function declared to return "Tensor"  [no-any-return]
+rl_money_laundering\gnn_modules\fusion.py:90: error: Returning Any from function declared to return "Tensor"  [no-any-return]
+rl_money_laundering\gnn_modules\att_gcm.py:14: error: Skipping analyzing "torch_geometric.nn": module is installed, 
+but missing library stubs or py.typed marker  [import-untyped]
+rl_money_laundering\gnn_modules\att_gcm.py:115: error: Returning Any from function declared to return "Tensor"  [no-any-return]
+rl_money_laundering\features\network_pyg.py:9: error: Library stubs not installed for "networkx"  [import-untyped]
+rl_money_laundering\features\network_pyg.py:12: error: Skipping analyzing "torch_geometric.utils": module is installed, but missing library stubs or py.typed marker  [import-untyped]
+rl_money_laundering\gnn_modules\rmganets_encoder_multibranch.py:131: error: Incompatible types in assignment (expression has type "None", variable has type "Linear")  [assignment]
+rl_money_laundering\gnn_modules\rmganets_encoder_multibranch.py:137: error: Incompatible default for argument "return_auxiliary" (default has type "None", argument has type "bool")  [assignment]
+rl_money_laundering\gnn_modules\rmganets_encoder_multibranch.py:137: note: PEP 484 prohibits implicit Optional. Accordingly, mypy has changed its default to no_implicit_optional=True
+rl_money_laundering\gnn_modules\rmganets_encoder_multibranch.py:137: note: Use https://github.com/hauntsaninja/no_implicit_optional to automatically upgrade your codebase
+rl_money_laundering\gnn_modules\rmganets_encoder_multibranch.py:187: error: Returning Any from function declared to 
+return "Tensor | tuple[Tensor, dict[str, Tensor]]"  [no-any-return]
+rl_money_laundering\gnn_modules\rmganets_encoder.py:105: error: Incompatible types in assignment (expression has type "None", variable has type "Linear")  [assignment]
+rl_money_laundering\gnn_modules\rmganets_encoder.py:147: error: Returning Any from function declared to return "Tensor"  [no-any-return]
+rl_money_laundering\baselines\xgboost_baseline.py:16: error: Library stubs not installed for "pandas"  [import-untyped]
+rl_money_laundering\baselines\xgboost_baseline.py:16: note: Hint: "python3 -m pip install pandas-stubs"
+rl_money_laundering\baselines\xgboost_baseline.py:16: note: (or run "mypy --install-types" to install all missing stub packages)
+rl_money_laundering\baselines\xgboost_baseline.py:17: error: Library stubs not installed for "networkx"  [import-untyped]
+rl_money_laundering\baselines\xgboost_baseline.py:17: note: Hint: "python3 -m pip install types-networkx"
+rl_money_laundering\baselines\xgboost_baseline.py:18: error: Skipping analyzing "sklearn.model_selection": module is installed, but missing library stubs or py.typed marker  [import-untyped]
+rl_money_laundering\baselines\xgboost_baseline.py:18: note: See https://mypy.readthedocs.io/en/stable/running_mypy.html#missing-imports
+rl_money_laundering\baselines\xgboost_baseline.py:59: error: Cannot find implementation or library stub for module named "xgboost"  [import-not-found]
+rl_money_laundering\baselines\xgboost_baseline.py:75: error: Function is missing a type annotation for one or more arguments  [no-untyped-def]
+rl_money_laundering\baselines\xgboost_baseline.py:113: error: Returning Any from function declared to return "ndarray[tuple[Any, ...], dtype[Any]]"  [no-any-return]
+rl_money_laundering\baselines\xgboost_baseline.py:115: error: Function is missing a type annotation for one or more 
+arguments  [no-untyped-def]
+rl_money_laundering\baselines\xgboost_baseline.py:157: error: Incompatible types in assignment (expression has type 
+"ndarray[tuple[Any, ...], dtype[floating[_32Bit]]]", variable has type "list[ndarray[tuple[Any, ...], dtype[Any]]]")  [assignment]
+rl_money_laundering\baselines\xgboost_baseline.py:158: error: Incompatible types in assignment (expression has type 
+"ndarray[tuple[Any, ...], dtype[signedinteger[_32Bit]]]", variable has type "list[Any]")  [assignment]
+rl_money_laundering\baselines\xgboost_baseline.py:160: error: "list[ndarray[tuple[Any, ...], dtype[Any]]]" has no attribute "shape"  [attr-defined]
+rl_money_laundering\baselines\xgboost_baseline.py:160: error: "list[Any]" has no attribute "shape"  [attr-defined]  
+rl_money_laundering\baselines\xgboost_baseline.py:161: error: "list[Any]" has no attribute "mean"  [attr-defined]   
+rl_money_laundering\baselines\xgboost_baseline.py:163: error: Incompatible return value type (got "tuple[list[ndarray[tuple[Any, ...], dtype[Any]]], list[Any]]", expected "tuple[ndarray[tuple[Any, ...], dtype[Any]], ndarray[tuple[Any, ...], dtype[Any]]]")  [return-value]
+rl_money_laundering\baselines\xgboost_baseline.py:165: error: Function is missing a return type annotation  [no-untyped-def]
+rl_money_laundering\baselines\xgboost_baseline.py:212: error: "None" has no attribute "fit"  [attr-defined]
+rl_money_laundering\baselines\xgboost_baseline.py:222: error: Incompatible types in assignment (expression has type 
+"list[str]", variable has type "None")  [assignment]
+rl_money_laundering\baselines\xgboost_baseline.py:276: error: Function is missing a return type annotation  [no-untyped-def]
+rl_money_laundering\baselines\xgboost_baseline.py:284: error: Function is missing a return type annotation  [no-untyped-def]
+rl_money_laundering\baselines\xgboost_baseline.py:287: error: "None" has no attribute "load_model"  [attr-defined]  
+rl_money_laundering\baselines\xgboost_baseline.py:291: error: Function is missing a type annotation for one or more 
+arguments  [no-untyped-def]
+rl_money_laundering\gnn_encoder.py:8: error: Library stubs not installed for "networkx"  [import-untyped]
+rl_money_laundering\gnn_encoder.py:14: error: Skipping analyzing "torch_geometric.data": module is installed, but missing library stubs or py.typed marker  [import-untyped]
+rl_money_laundering\gnn_encoder.py:15: error: Skipping analyzing "torch_geometric.nn": module is installed, but missing library stubs or py.typed marker  [import-untyped]
+rl_money_laundering\gnn_encoder.py:190: error: Incompatible types in assignment (expression has type "GATEncoder", variable has type "GraphSAGEEncoder")  [assignment]
+rl_money_laundering\gnn_encoder.py:199: error: Incompatible types in assignment (expression has type "RMGANetsMultiBranchEncoder", variable has type "GraphSAGEEncoder")  [assignment]
+rl_money_laundering\gnn_encoder.py:213: error: Incompatible types in assignment (expression has type "RMGANetsEncoder", variable has type "GraphSAGEEncoder")  [assignment]
+rl_money_laundering\gnn_encoder.py:243: error: Missing type parameters for generic type "set"  [type-arg]
+rl_money_laundering\gnn_encoder.py:244: error: Missing type parameters for generic type "list"  [type-arg]
+rl_money_laundering\gnn_encoder.py:245: error: Function "builtins.callable" is not valid as a type  [valid-type]    
+rl_money_laundering\gnn_encoder.py:245: note: Perhaps you meant "typing.Callable" instead of "callable"?
+rl_money_laundering\gnn_encoder.py:247: error: Missing type parameters for generic type "dict"  [type-arg]
+rl_money_laundering\gnn_encoder.py:257: error: Missing type parameters for generic type "dict"  [type-arg]
+rl_money_laundering\gnn_encoder.py:284: error: Missing type parameters for generic type "set"  [type-arg]
+rl_money_laundering\gnn_encoder.py:285: error: Missing type parameters for generic type "list"  [type-arg]
+rl_money_laundering\gnn_encoder.py:286: error: Function "builtins.callable" is not valid as a type  [valid-type]    
+rl_money_laundering\gnn_encoder.py:286: note: Perhaps you meant "typing.Callable" instead of "callable"?
+rl_money_laundering\gnn_encoder.py:313: error: Returning Any from function declared to return "ndarray[tuple[Any, ...], dtype[Any]]"  [no-any-return]
+rl_money_laundering\gnn_encoder.py:320: error: Missing type parameters for generic type "set"  [type-arg]
+rl_money_laundering\gnn_encoder.py:337: error: Function "builtins.callable" is not valid as a type  [valid-type]    
+rl_money_laundering\gnn_encoder.py:337: note: Perhaps you meant "typing.Callable" instead of "callable"?
+rl_money_laundering\gnn_encoder.py:349: error: callable? has no attribute "extract"  [attr-defined]
+rl_money_laundering\gnn_encoder.py:351: error: callable? not callable  [misc]
+rl_money_laundering\gnn_encoder.py:376: error: Missing type parameters for generic type "set"  [type-arg]
+rl_money_laundering\gnn_encoder.py:377: error: Missing type parameters for generic type "list"  [type-arg]
+rl_money_laundering\gnn_encoder.py:447: error: Incompatible types in assignment (expression has type "ndarray[tuple[Any, ...], dtype[floating[_32Bit]]]", variable has type "list[float]")  [assignment]
+rl_money_laundering\gnn_encoder.py:449: error: Incompatible types in assignment (expression has type "ndarray[tuple[Any, ...], dtype[Any]]", variable has type "list[float]")  [assignment]
+rl_money_laundering\gnn_encoder.py:453: error: Incompatible return value type (got "list[float]", expected "ndarray[tuple[Any, ...], dtype[Any]]")  [return-value]
+rl_money_laundering\pipeline.py:19: error: Library stubs not installed for "pandas"  [import-untyped]
+Found 125 errors in 26 files (checked 38 source files)
+PS C:\Users\ADBIadmin\Documents\Mariam\graph\rl_money_laundering\src> 

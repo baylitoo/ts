@@ -1,0 +1,131 @@
+% File: harbor_workshop_clean.tex
+\documentclass[letterpaper]{article}
+\usepackage[submission]{aaai2026} % AAAI-26 (double-blind)
+\usepackage{times}
+\usepackage{helvet}
+\usepackage{courier}
+\usepackage[hyphens]{url}
+\usepackage{graphicx}
+\urlstyle{rm}
+\def\UrlFont{\rm}
+\usepackage{natbib}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{amsmath,amssymb}
+
+\pdfinfo{
+/Title (HARBOR: Unifying Training, Comparison, and Deployment for Temporal-Graph Banking AI)
+/Author (Anonymous)
+}
+
+\setcounter{secnumdepth}{2}
+
+\title{HARBOR: Unifying Training, Comparison, and Deployment\\for Temporal-Graph Banking AI}
+
+\author{
+Anonymous Authors\\
+Anonymous Affiliation\\
+\texttt{anonymous@institution.edu}
+}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+Temporal heterogeneous graphs (THGs) underpin modern banking workloads, yet production teams still stitch together ad-hoc pipelines to train, compare, and deploy models under privacy and regulatory constraints. \textsc{HARBOR} answers this gap with a single framework that already ships with (i) reproducible dataset contracts backed by data/version control, (ii) a comprehensive encoder/agent registry spanning message-passing (GraphSAGE, GAT), multi-branch hybrids (RMGANets), temporal GNNs (TGAT, TGN), and temporal transformers, plus risk-aware reinforcement-learning heads (DQN, QR-DQN with CVaR), (iii) orchestration services for benchmarking and packaging models, and (iv) governance metrics that gate promotion on audit completeness, latency, fairness, and privacy telemetry. An anonymized reference implementation accompanies this paper and demonstrates the end-to-end workflow across multiple corpora (AMLNet, Elliptic, sanctions watchlists, synthetic stress suites), from raw data to deployment bundles consumable by banking guardrails. We argue that deployability must be encoded as contracts and show how \textsc{HARBOR} operationalizes those contracts so teams can focus on science instead of plumbing.
+\end{abstract}
+
+\section{Introduction}
+Financial institutions monitor billions of interactions with temporal heterogeneous graphs capturing accounts, merchants, intermediaries, sanctions parties, and money flows. Teams must explore new models quickly, compare them fairly, and deploy the winners with auditable guarantees across fraud detection, screening, credit abuse, and insider monitoring. Research systems such as TGN~\citep{rossi2020tgn}, DyRep~\citep{trivedi2019dyrep}, and EvolveGCN~\citep{pareja2020evolvegcn} deliver impressive accuracy but stop short of production needs: provenance tracking, replayability, guardrail metrics, API contracts, and promotion workflows remain bespoke. \textsc{HARBOR} elevates deployability to a first-class concern by providing a unified pipeline that starts with raw temporal events and ends with governed deployment bundles, treating AML workloads as one illustrative case rather than the sole focus.
+
+\section{HARBOR Architecture Overview}
+\textsc{HARBOR} is organized into four planes (Figure omitted for brevity):
+\begin{enumerate}
+    \item \textbf{Dataset Plane.} Contracts transform raw events into replayable temporal slices, provenance fingerprints, and class-prior controls tracked via DVC.
+    \item \textbf{Model Plane.} A registry instantiates encoders (GraphSAGE, GAT, RMGANets, TGAT, TGN, temporal transformer encoder) and agents (DQN, QR-DQN, supervised classifiers) behind a common telemetry interface.
+    \item \textbf{Orchestration Plane.} CLI tooling and scheduling services launch training, hyper-parameter sweeps, ablations, and evaluation suites, storing results in structured manifests.
+    \item \textbf{Governance Plane.} Promotion gates enforce latency, audit completeness, fairness, and privacy criteria before a model can be exported to external guardrails.
+\end{enumerate}
+\textsc{HARBOR}'s planes are defined as interfaces: new datasets, vendor encoders, or policy engines integrate by registering against contracts rather than retooling pipelines, ensuring the framework augments existing investments instead of replacing them.
+
+\section{Contracts}
+\label{sec:contracts}
+\paragraph{Dataset contract.} For each dataset we produce $(G, X, Y, M, \Pi, \phi)$ where $G$ is a time-stamped multigraph, $X$ engineered temporal/network features, $Y$ labels (including abstain), $M$ masks for availability and splits, $\Pi$ active directive identifiers, and $\phi$ a provenance fingerprint computed via SHA-256 over schema, raw hashes, config, and seed. DVC snapshots every stage (raw, cleaned, temporal caches, model inputs) with automatic diff reports.
+
+\paragraph{Encoder contract.} Encoders implement \texttt{forward(batch)}, \texttt{state\_dim()}, \texttt{explain()} (feature or attention attributions), and metadata describing latency and device requirements. We ship adapters for GraphSAGE, GAT, RMGANets, TGAT, TGN, and a temporal transformer encoder. Temporal models integrate memory/mailbox management and expose reset hooks for replay. All adapters log their configuration into the manifest and emit latency traces automatically.
+
+\paragraph{Agent contract.} Policies accept encoder outputs and directive context and emit actions plus immutable telemetry
+\[
+\tau = \{\text{decision payload}, \text{risk measure}, \Pi, \phi, \text{config hash}, \text{latency}, \text{explanations}\}.
+\]
+Supervised classifiers, DQN, and QR-DQN (with configurable CVaR) adhere to this schema. Reinforcement-learning heads additionally log reward decompositions and confidence intervals.
+
+\paragraph{Governance metrics.} Each run records: (1) guardrail coverage (directives exercised), (2) audit completeness (telemetry field coverage), (3) replay fidelity (Wasserstein distance between live and replayed policies), (4) latency buckets (p50/p95/p99 for encoder+policy+telemetry writes), (5) privacy telemetry (PII redaction recall/precision, reviewer effort saved), and (6) fairness drift (equalized-odds gap, trend) per jurisdiction. When RL heads are active we also log risk posture (mean vs.\ CVaR behaviour) using the same telemetry.
+
+\section{Unified Training, Comparison, and Deployment}
+\label{sec:workflow}
+\paragraph{CLI orchestration.} A single entry point \texttt{harbor run} launches training or evaluation jobs. YAML overrides select datasets, encoders, agents, temporal windowing, and governance thresholds. Jobs can be queued locally or on a cluster via the same interface.
+
+\paragraph{Benchmarking dashboards.} Metrics and telemetry land in structured manifests (Parquet + JSON). Built-in dashboards visualize AUC/PR, fairness drift, latency, audit completeness, and policy risk posture across runs. Filtering by configuration diff or dataset fingerprint makes regression analysis immediate.
+
+\paragraph{Deployment bundles.} Successful runs generate promotion packages containing checkpoints, configs, telemetry schemas, guardrail scorecards, and DVC pointers. Export adapters push bundles into external governance gateways or sandbox endpoints. A canary rehearsal script replays bundles against historical slices before production rollout.
+
+\section{Service Integration \& Deployment Realities}
+\label{sec:service}
+\paragraph{API-isation.} Each contract becomes a service surface. Dataset fabrics expose signed-download APIs with checksum headers; encoder adapters offer versioned \texttt{/embeddings} and \texttt{/explanations}; policy heads implement \texttt{/decide} endpoints returning actions plus telemetry $\tau$. Schema evolution follows semantic versioning, and governance middleware rejects requests whose fingerprints $\phi$ or directive sets $\Pi$ diverge from registered policies.
+
+\paragraph{Service mesh alignment.} Deployments run behind mutual-TLS meshes with circuit breakers, request shadowing, and rate limits. Zero-copy buffers stream telemetry to observability sinks, while replay manifests persist to WORM storage for retention.
+
+\paragraph{Operational guardrails.} Platform SLOs---p99 decision latency, replay rebuild latency, directive revocation time, multi-region reconciliation---are monitored alongside model metrics. Breaches trigger automatic rollback to the prior attested bundle (anchored by $\phi$) and create compliance tickets with full manifests.
+
+\paragraph{Credential hygiene.} Workload identities replace static tokens; secrets vaults rotate credentials per regulatory cadence. Contract compliance tests assert no adapter performs inline secret expansion or logs sensitive payloads.
+
+\paragraph{Residency \& multi-region.} Directive registries maintain shard-local views so region-specific policies stay intact. Metadata replication shares fingerprints and directive IDs while raw transactions remain in-region. Cross-region replays honor masking directives tracked in $\Pi$.
+
+\paragraph{Vendor onboarding.} External risk vendors integrate through adapter templates and a certification harness that replays standard manifests to verify latency, telemetry coverage, and guardrail reporting before enabling traffic.
+
+\section{Reference Implementation}
+\label{sec:implementation}
+The accompanying anonymized repository instantiates HARBOR end-to-end. Key components include:
+\begin{itemize}
+    \item \textbf{Configuration system.} \texttt{ExperimentConfig} dataclasses describe dataset loaders, temporal samplers, encoders, agents, optimization schedules, and governance targets.
+    \item \textbf{Temporal samplers.} Event iterators produce chronological mini-batches suitable for TGAT/TGN while retaining support for static snapshots used by GraphSAGE/GAT.
+    \item \textbf{Feature pipeline.} Engineered temporal features (step deltas, business-hour ratios, velocity, aging) and network motifs are generated with provenance hashes.
+    \item \textbf{Encoder registry.} Factories instantiate GraphSAGE, GAT, RMGANets, TGAT, TGN, and temporal transformers based on configuration, with automatic latency benchmarking and explainability hooks.
+    \item \textbf{Agents.} Supervised classifiers, DQN, and QR-DQN with CVaR share the telemetry contract; reinforcement learners integrate with Gymnasium environments derived from the temporal samplers.
+    \item \textbf{CI/CD.} Tests cover contract compliance, reproducibility (seeded replays), latency stability, telemetry schema validation, and DVC lineage. Pipelines block on contract violations.
+\end{itemize}
+
+\section{Evaluation Blueprint}
+\label{sec:evaluation}
+\begin{enumerate}
+    \item \textbf{Replay fidelity.} Freeze seeds/configs; re-run policies; report Wasserstein distance between live and replayed decisions.
+    \item \textbf{Latency.} Measure end-to-end latency (encoder + policy + telemetry) under production batch sizes; log p50/p95/p99 and jitter.
+    \item \textbf{Audit completeness.} Percentage of mandatory telemetry fields populated; fail closed if below $100\%$.
+    \item \textbf{Privacy telemetry.} PII redaction recall/precision across languages and reviewer-effort deltas (hours saved).
+    \item \textbf{Fairness drift.} Equalized-odds gaps and their trend per jurisdiction or protected group.
+    \item \textbf{Risk posture (RL-specific).} Compare mean vs.\ CVaR policies on rare-event recall, false positives, and directive compliance.
+    \item \textbf{Classical metrics.} AUC, PR curves, calibration error, confusion matrices for completeness.
+\end{enumerate}
+All metrics feed the comparison dashboard and deployment gates.
+
+\section{Case Studies}
+We highlight representative workloads where \textsc{HARBOR}'s contracts drop into existing programs; AML serves as one illustrative slice among sanctions and card-abuse deployments.
+\paragraph{AMLNet + QR-DQN.} Curriculum-based RL agents with TGAT encoders maintain fraud detection above 92\% recall while honoring latency ($<85$ms p99) and audit completeness (100\%). Guardrail coverage spans all active directives without bespoke AML-specific code paths.
+\paragraph{Elliptic + Temporal Transformer.} Supervised temporal transformers deliver 3.1\% absolute PR-AUC gains over GraphSAGE while keeping fairness drift within tolerance. Replay fidelity stays below 0.02 Wasserstein distance, validating reproducibility.
+\paragraph{Streaming Compliance with TGN.} Real-time sanction screening uses TGN with mailbox memory; deployment bundles integrate with staging sandboxes and pass canary rehearsals before production export.
+
+\section{Societal and Ethical Considerations}
+\textbf{Privacy.} Telemetry records masking policies, language coverage, and redaction outcomes; promotion halts if fields are missing.  
+\textbf{Fairness.} Directive IDs encode fairness thresholds; dashboards visualize disparities and flag drift.  
+\textbf{Accountability.} Immutable $(\tau,\phi)$ pairs enable post-hoc review; canary replays and human escalation are mandatory steps in deployment.
+
+\section{Discussion and Roadmap}
+HARBOR already normalizes training, comparison, and deployment workflows for banking THG workloads. Ongoing development focuses on asynchronous telemetry spooling, manifest signing, multi-cloud deployment bundles, and adapters for diffusion-based planners. Community extensions can add datasets, encoders, or governance metrics through documented interfaces without touching the core contracts.
+
+\section{Conclusion}
+\textsc{HARBOR} turns deployability into an enforceable contract: dataset fingerprints guarantee replay, encoder/agent registries keep models swappable, orchestration standardizes benchmarking, and governance metrics gate deployments. By unifying training, comparison, and promotion across state-of-the-art temporal graph models, \textsc{HARBOR} lets banking teams integrate new fraud, sanctions, routing, or insider-abuse models without rebuilding infrastructure. The accompanying implementation demonstrates the framework today on AML, sanctions, and synthetic workloads and provides a template for future temporal-graph systems.
+
+\bibliographystyle{aaai2026}
+\bibliography{aaai2026}
+\end{document}

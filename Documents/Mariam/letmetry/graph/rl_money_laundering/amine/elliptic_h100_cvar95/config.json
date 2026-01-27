@@ -1,0 +1,89 @@
+{
+  "name": "elliptic_rmganets_fixed",
+  "dataset_type": "elliptic",
+  "dataset_path": "data/elliptic",
+  "include_unlabeled": true,
+  "agent": {
+    "state_dim": 80,
+    "action_dim": 6,
+    "learning_rate": 0.0005,
+    "gamma": 0.99,
+    "epsilon_start": 1.0,
+    "epsilon_end": 0.1,
+    "epsilon_decay": 0.99985,
+    "buffer_capacity": 50000,
+    "use_prioritized_replay": true,
+    "hidden_dims": [
+      512,
+      512,
+      256,
+      128
+    ],
+    "device": "cuda",
+    "agent_type": "qrdqn",
+    "num_quantiles": 224,
+    "n_step": 5,
+    "risk_measure": "cvar_95",
+    "prioritized_alpha": 0.8,
+    "prioritized_beta": 0.6,
+    "prioritized_beta_annealing": 0.0005,
+    "positive_fraction": 0.4,
+    "use_double_dqn": true,
+    "use_guided_exploration": true,
+    "exploration_temperature": 1.0,
+    "gradient_clip": 1.0
+  },
+  "gnn": {
+    "node_feature_dim": 172,
+    "gnn_type": "rmganets",
+    "embedding_dim": 64,
+    "hidden_channels": 160,
+    "num_layers": 2,
+    "history_dim": 16,
+    "dropout": 0.1,
+    "heads": 8,
+    "device": "cuda",
+    "multi_branch": true,
+    "use_dqn_enhancement": true,
+    "num_classes": 2
+  },
+  "environment": {
+    "max_steps": 200,
+    "max_neighbors": 5,
+    "intrinsic_reward_weight": 1.0,
+    "step_penalty": -0.01,
+    "fraud_reward": 1.0,
+    "false_alarm_penalty": -1.0
+  },
+  "trainer": {
+    "num_episodes": 10000,
+    "batch_size": 256,
+    "eval_frequency": 50,
+    "checkpoint_frequency": 100,
+    "target_update_frequency": 10,
+    "curriculum_schedule": [
+      0.5,
+      0.35,
+      0.2,
+      0.1,
+      0.05,
+      0.02
+    ],
+    "max_steps_per_episode": 200,
+    "num_eval_episodes": 20,
+    "multi_branch": {
+      "enabled": true,
+      "variant": "improved",
+      "lambda_branch": 0.25,
+      "epsilon_dqn": 0.4,
+      "beta_reg": 0.1,
+      "temporal_decay": 0.1,
+      "adaptive_weighting": true,
+      "learning_rate": 0.0005,
+      "log_frequency": 25
+    }
+  },
+  "output_dir": "outputs/h100_full_suite/20251026_000000/elliptic_h100_cvar95",
+  "seed": 42,
+  "nrows": null
+}

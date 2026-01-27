@@ -1,0 +1,372 @@
+\documentclass[11pt,a4paper]{article}
+
+% Packages
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsthm}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage[margin=1in]{geometry}
+\usepackage{natbib}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{listings}
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows,positioning,fit,backgrounds}
+
+% Hyperref setup
+\hypersetup{
+    colorlinks=true,
+    linkcolor=blue,
+    filecolor=magenta,
+    urlcolor=cyan,
+    citecolor=blue,
+}
+
+% Custom commands
+\newcommand{\Rtotal}{R_{\text{total}}}
+\newcommand{\Rhard}{R_{\text{hard}}}
+\newcommand{\Rjudge}{R_{\text{judge}}}
+\newcommand{\EE}{\mathbb{E}}
+\newcommand{\KL}{\text{KL}}
+
+% Title
+\title{Learned Judge Models for Anti-Money Laundering Detection:\\A Literature Review and Experimental Design}
+\author{Research Document for RL-AML Project}
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+We propose a hybrid reward framework for graph-based reinforcement learning in Anti-Money Laundering detection that combines verifiable hard metrics with a fine-tuned ModernBERT encoder serving as a learned judge. Traditional AML systems suffer from extreme label scarcity, with fraud rates typically below 0.1\%, delayed ground truth as investigations span months, and adversarial drift as money launderers continuously adapt to detection rules. Pure rule-based rewards fail to capture nuanced suspicious patterns, while pure learned rewards risk reward hacking and catastrophic exploitation. Our approach anchors a conservative reward formula where hard metrics derived from precision and recall on confirmed labels provide a safety floor, and the learned judge captures behavioral subtleties that resist explicit enumeration. We employ two-timescale training with slow judge updates and fast policy updates, combined with drift detection to prevent co-adaptation collapse. Experiments on synthetic transaction graphs and the Elliptic Bitcoin dataset will ablate judge weight schedules, uncertainty penalties, and adversarial robustness, measuring both detection performance and reward exploitation metrics.
+\end{abstract}
+
+\section{Introduction}
+
+Anti-Money Laundering detection represents one of the most challenging applications of machine learning in financial services. The fundamental difficulty lies not in the complexity of the patterns themselves, but in the severe constraints under which learning must occur. Confirmed fraud labels arrive months or years after suspicious activity occurs, creating a temporal gap that renders standard supervised learning ineffective for adapting to evolving threats. The base rate of confirmed money laundering in transaction data typically falls below one-tenth of one percent, meaning that even highly accurate classifiers produce overwhelming numbers of false positives when applied at scale. Perhaps most critically, the adversaries are adaptive: sophisticated money laundering operations continuously modify their behavior in response to detection systems, creating a non-stationary environment where yesterday's successful detection rules become tomorrow's baseline that criminals route around.
+
+Reinforcement learning offers a natural framework for addressing these challenges. By treating the AML detection problem as a sequential decision-making task where an agent must flag suspicious transactions and accounts over time, we can incorporate delayed feedback, handle sparse rewards, and potentially learn robust policies through adversarial training. However, the reward signal in RL-based AML presents its own difficulties. Hard metrics such as precision and recall on confirmed labels provide ground truth anchoring but arrive too sparsely to guide learning effectively. Conversely, learned reward models can provide dense feedback but risk exploitation, where the policy optimizes for artifacts of the reward model rather than genuine detection quality.
+
+This document presents a comprehensive framework for combining hard metrics with a learned judge model, specifically a fine-tuned ModernBERT encoder that evaluates complete detection episodes and assigns reward scores. We develop conservative reward computation mechanisms that bound the influence of the learned judge, two-timescale training protocols that prevent co-adaptation between the policy and reward model, and safety monitoring systems that detect when the learned reward diverges from ground truth. The following sections review the relevant literature across five intersecting research areas, enumerate specific failure modes and their mitigations, present the complete technical specification of our proposed method, outline an experimental plan with ablation studies, and provide a reproducibility checklist aligned with both scientific and regulatory requirements.
+
+\section{Related Work}
+
+\subsection{Reward Modeling in Reinforcement Learning from Human Feedback}
+
+The insight that reward functions can be learned from preference data rather than hand-coded transformed the landscape of reinforcement learning applications. Christiano and colleagues established the foundational framework in 2017, demonstrating that a reward model trained on merely one to two thousand human preference comparisons could guide RL agents to perform complex tasks including Atari games and MuJoCo locomotion without access to the true environmental reward \citep{christiano2017deep}. Their key architectural choice, training a reward network to satisfy the Bradley-Terry preference model where the probability that trajectory $a$ is preferred to trajectory $b$ equals the sigmoid of the reward difference, remains standard in modern RLHF pipelines.
+
+The InstructGPT work by Ouyang and colleagues scaled this approach to language models, introducing the now-canonical three-stage pipeline of supervised fine-tuning followed by reward model training and finally PPO optimization \citep{ouyang2022training}. Their reward model, a six-billion parameter GPT-3 variant trained on thirty-three thousand human comparisons, revealed a critical phenomenon that directly motivates our conservative approach: reward hacking. Policies optimized too aggressively against the learned reward model produced outputs that humans rated lower than intermediate checkpoints, despite achieving higher scores under the reward model. This observation establishes that learned rewards, however sophisticated, serve as proxies rather than oracles.
+
+Ziegler and colleagues identified that reward model quality degrades on out-of-distribution inputs, proposing KL divergence penalties to keep the policy close to a reference distribution \citep{ziegler2019fine}. While effective for language models where the reference distribution is well-defined, this approach translates imperfectly to graph-based AML detection where we lack a natural reference policy. Our hard metric anchoring serves an analogous regularization function through different means: rather than penalizing distributional divergence, we directly anchor to verifiable ground truth that, while sparse, provides an absolute measure of detection quality.
+
+The work on learning to summarize from human feedback demonstrated that reward models can capture subtle quality distinctions that humans recognize but struggle to articulate as explicit rules \citep{stiennon2020learning}. This finding resonates strongly with the AML domain, where experienced investigators can identify suspicious patterns through intuition developed over years of case review but cannot enumerate the features that trigger their suspicion. A learned judge that ingests complete episode descriptions may capture these ineffable patterns in ways that hand-crafted reward functions cannot.
+
+Bai and colleagues introduced Constitutional AI and discovered that reward models trained on binary comparisons transfer poorly to Likert-scale ratings, suggesting architectural implications for our judge design \citep{bai2022training}. Rather than outputting preference logits between episode pairs, our judge architecture produces continuous reward scores calibrated to the scale of hard metrics, enabling direct combination without scale mismatch.
+
+\subsection{Graph Neural Networks for Fraud Detection}
+
+The Elliptic Bitcoin dataset released by Weber and colleagues in 2019 established the canonical benchmark for graph-based AML research \citep{weber2019anti}. Containing approximately two hundred thousand transactions with forty-five hundred confirmed illicit nodes representing about two percent of the total, the dataset provides temporal structure across forty-nine discrete time steps that enables evaluation of models' ability to handle distribution shift. Their baseline graph convolutional network achieved 0.73 F1 on illicit detection while highlighting severe class imbalance and temporal concept drift as the primary challenges. The temporal structure of this dataset makes it particularly suitable for evaluating our judge's drift resilience.
+
+Pareja and colleagues introduced EvolveGCN, which adapts GCN parameters over time using RNN controllers to handle temporal dynamics in transaction graphs \citep{pareja2020evolvegcn}. Their finding that static GNNs degrade by fifteen percent on later time steps compared to earlier ones motivates our adversarial environment's injection of distributional shifts. A detection system that performs well on historical data but fails as patterns evolve provides little practical value in deployment.
+
+Liu and colleagues addressed the label imbalance problem through neighborhood sampling strategies that over-represent minority class edges, achieving 0.81 F1 on Elliptic by focusing message passing on fraud-adjacent neighborhoods \citep{liu2021pick}. We incorporate similar ideas in observation construction for the RL agent, ensuring that the agent's limited attention is directed toward the most informative regions of the transaction graph rather than being diluted across the vast majority of legitimate activity.
+
+Synthetic graph generators calibrated to real-world degree distributions, transaction volumes, and fraud typologies provide controlled experimental environments where ground truth is known by construction \citep{altman2023realistic}. The AMLSim framework supports parameterized fraud injection with configurable typologies including structuring, round-tripping, and layered transactions. We use these synthetic environments for ablation studies where the sparsity and noise of real labels would confound experimental comparisons.
+
+The regulatory requirement for explainability in AML decisions, highlighted by Johannessen and colleagues, motivates our episode serialization approach that produces human-readable justifications alongside reward scores \citep{johannessen2023explainable}. Financial regulators require that automated flagging decisions be accompanied by rationale that human reviewers can evaluate and contest, a requirement that pure neural reward signals cannot satisfy.
+
+\subsection{Conservative and Safe Reward Learning}
+
+Kumar and colleagues introduced the principle of pessimism under uncertainty in Conservative Q-Learning, demonstrating that when the policy visits states underrepresented in training data, the value function should return conservative estimates rather than extrapolating optimistically \citep{kumar2020conservative}. Their penalty term that suppresses high Q-values for out-of-distribution actions directly inspires our judge uncertainty penalty. When our learned judge encounters episodes dissimilar to its training distribution, the uncertainty head outputs elevated values that attenuate the reward signal, preventing the policy from exploiting gaps in the judge's competence.
+
+Fujimoto and colleagues demonstrated that naive off-policy algorithms diverge catastrophically when trained on static datasets due to extrapolation error in value estimates \citep{fujimoto2019off}. Their Batch-Constrained Q-learning constrains action selection to actions plausible under the data distribution, an idea analogous to our clipping that constrains judge rewards to plausible ranges regardless of what the reward head outputs. Even if the judge assigns extreme scores to novel episodes, the clipping bound ensures these scores cannot dominate the total reward.
+
+The comprehensive survey by Levine and colleagues identified a key failure mode in offline RL: learned reward and value functions trained jointly with policies can co-adapt, producing high estimated returns but poor true performance \citep{levine2020offline}. This self-delusion phenomenon, where the policy learns to produce outputs the reward model scores highly regardless of ground truth quality, motivates our two-timescale training where the judge updates slowly and independently from the policy. By maintaining separation between the timescales of policy and reward model updates, we reduce the opportunity for degenerate equilibria to emerge.
+
+Hadfield-Menell and colleagues formalized the observation that reward functions specified by designers serve as proxies for true intent rather than direct encodings of it \citep{hadfield2017inverse}. Under their inverse reward design framework, the observed reward should be treated as evidence about the true reward, with appropriate uncertainty maintained about the mapping. Our approach operationalizes this principle by treating the judge as an uncertain estimate that must be anchored to hard metrics serving as noisy but unbiased samples from the true reward distribution.
+
+Garg and colleagues demonstrated that conservative methods can become overly pessimistic, degrading performance even on in-distribution states where confidence should be high \citep{garg2023extreme}. This observation motivates our annealing schedule that begins with high hard metric weight during early training when the judge is uncalibrated and gradually increases judge weight as training progresses and calibration improves.
+
+\subsection{Multi-Agent Adversarial Training for Robustness}
+
+Lanctot and colleagues established the framework for training agents against adversarial opponents within a unified game-theoretic formulation \citep{lanctot2017unified}. They demonstrated that self-play in two-player zero-sum games converges to Nash equilibria under appropriate conditions, providing theoretical grounding for detector-adversary training where the adversary represents adaptive money launderers. While AML detection is not strictly zero-sum, the adversarial framing captures the essential dynamic where detection improvements spur evasion innovations.
+
+Pinto and colleagues demonstrated that training against a learned adversary applying worst-case perturbations produces policies robust to test-time distribution shift \citep{pinto2017robust}. Their adversary was trained to maximize policy failure subject to perturbation constraints, directly analogous to our adversary that injects fraudulent patterns into the transaction graph subject to realism constraints. An adversary that produces implausible transaction patterns would provide poor training signal; the adversary must generate challenging but realistic attacks.
+
+Gleave and colleagues revealed that adversarial policies can exploit unexpected failure modes in trained agents through behaviors that appear random but systematically trigger edge cases \citep{gleave2020adversarial}. This finding motivates our safety monitoring that detects when the adversary achieves unusual reward patterns that might indicate exploitation of detector vulnerabilities rather than legitimate adversarial pressure.
+
+Recent work on adversarial training specifically for graph neural networks examined edge addition and deletion attacks, finding these structural perturbations more effective against GNN-based fraud detectors than feature perturbations \citep{hsieh2023adversarial}. This insight informs our adversary's action space, which emphasizes graph topology modifications such as introducing new edges representing synthetic transactions rather than modifying features of existing transactions.
+
+\subsection{Encoder-Based Reward Models and Episode Evaluation}
+
+Lee and colleagues demonstrated that encoder models can provide reward signal without human annotation through AI feedback, using larger language models as reward models for smaller policy models \citep{lee2023rlaif}. While our architecture uses ModernBERT rather than an autoregressive language model, the principle of encoder-as-judge transfers directly. The judge need not generate explanations to provide useful reward signal; discriminative evaluation suffices.
+
+ModernBERT introduced architectural improvements including rotary position embeddings, unpadded attention, and Flash Attention 2 integration that make BERT-scale encoders competitive with larger decoders on discriminative tasks \citep{warner2024modernbert}. The eight-thousand-token context window accommodates our full episode serializations, which typically span two to four thousand tokens depending on episode complexity and transaction volume.
+
+Rafailov and colleagues showed that reward modeling and policy optimization can be unified under Direct Preference Optimization, eliminating the need for explicit reward model training \citep{rafailov2023direct}. However, their approach requires differentiating through the policy, which is infeasible in our discrete action RL setting where the detector selects specific nodes to flag. We therefore maintain explicit separation between the reward model and policy, accepting the additional complexity in exchange for architectural flexibility.
+
+Knox and Stone established the TAMER framework demonstrating that human feedback integrated as reward shaping accelerates learning compared to sparse environmental reward alone \citep{knox2009interactively}. Our judge serves an analogous function: providing richer reward signal than sparse hard metrics while maintaining grounding in human judgment through its training on labeled episodes.
+
+MacGlashan and colleagues identified that human feedback can be policy-dependent, with evaluators grading more stringently as the agent improves \citep{macglashan2017interactive}. This observation necessitates periodic reward model recalibration, which our two-timescale callback implements through controlled judge updates on fresh episode data.
+
+\section{Failure Modes and Mitigations}
+
+The combination of learned reward models with reinforcement learning in safety-critical financial applications introduces numerous failure modes that must be anticipated and mitigated. This section enumerates twelve specific failure modes, their detection signals, and the architectural mechanisms we employ to prevent or recover from each.
+
+\subsection{Reward Hacking}
+
+The policy may learn to exploit artifacts of the judge that correlate with reward but do not reflect genuine detection quality. For example, the policy might learn to generate verbose explanations that the judge's text encoder associates with thoroughness, or to flag transactions in patterns that happen to match the judge's training distribution regardless of actual suspiciousness. This manifests as divergence between judge reward and held-out evaluation metrics, or as increasing judge confidence coinciding with decreasing F1 on confirmed labels.
+
+We mitigate reward hacking through hard metric anchoring. The total reward formula ensures that hard metrics provide a floor: the term $\Rhard$ computed from precision and recall on confirmed labels contributes regardless of judge scores. Additionally, judge clipping bounds the maximum influence of $\Rjudge$ to fifty percent of the hard metric scale, preventing extreme judge scores from dominating total reward regardless of their accuracy.
+
+\subsection{Co-Adaptation Collapse}
+
+When the judge and policy train jointly, they may co-evolve toward mutually reinforcing degenerate solutions. The policy learns to produce outputs the judge rewards highly, while the judge learns to reward whatever outputs the policy produces, creating a positive feedback loop detached from ground truth. Detection signals include increasing judge calibration error and correlation between hard metrics and judge scores dropping below threshold.
+
+Two-timescale training addresses this failure mode by maintaining temporal separation between judge and policy updates. The judge parameters update only every hundred episodes, providing a relatively stable target for policy optimization. After five thousand episodes, the judge freezes entirely, eliminating the possibility of late-stage co-adaptation as the policy converges.
+
+\subsection{Distributional Shift in Judge Competence}
+
+A judge trained on early episodes may fail to generalize as the policy explores novel behavioral distributions. The serialized text of episodes from a mature policy may differ substantially from training-time episodes, placing the judge in an extrapolation regime where its predictions become unreliable. Jensen-Shannon divergence between judge training distribution and policy rollout distribution exceeding threshold serves as the detection signal.
+
+Periodic judge fine-tuning on recent episodes, implemented through a memory buffer that maintains the most recent five hundred episodes, addresses this shift. Exponential moving average parameter updates with decay 0.995 smooth the judge's evolution, preventing abrupt changes that might destabilize policy learning. Distribution matching regularization during judge updates encourages predictions consistent across old and new episode distributions.
+
+\subsection{Environmental Distributional Shift}
+
+Adversarial money launderers adapt their techniques, injecting novel fraud patterns unseen in the judge's training data. This differs from judge distributional shift in that the environment itself changes rather than just the policy's behavior within a fixed environment. Rolling F1 dropping despite stable judge reward indicates the judge has learned patterns specific to historical fraud that no longer apply.
+
+Our multi-agent training with an adversary agent explicitly models this dynamic. The adversary learns to generate diverse fraud patterns that challenge the detector, providing training pressure toward robustness. Regular retraining on newly confirmed labels incorporates ground truth about emerging patterns, though the delay inherent in label confirmation limits responsiveness.
+
+\subsection{Label Scarcity Overfitting}
+
+With confirmed fraud labels below one-tenth of one percent, hard metric signal is extremely sparse and noisy. A single confirmed fraud case in a batch can dominate gradient updates, leading to high variance in per-episode metrics and model performance varying dramatically across evaluation folds.
+
+The dense judge reward provides smoother learning signal by evaluating every episode rather than only those containing confirmed labels. Class weighting in hard metric computation increases the contribution of true positives relative to true negatives, amplifying signal from the rare positive cases. The judge learns to interpolate between sparse confirmed cases, providing reward signal for episodes where hard labels are unavailable.
+
+\subsection{Uncertainty Miscalibration}
+
+The judge's uncertainty head may report low uncertainty on out-of-distribution inputs, exhibiting overconfident extrapolation that our safety mechanisms cannot detect. Expected calibration error increasing or uncertainty failing to correlate with actual prediction error indicates this failure mode.
+
+Uncertainty penalties in the reward formula directly address miscalibration by subtracting a term proportional to reported uncertainty. If the uncertainty head is well-calibrated, this penalty correctly attenuates reward for genuinely uncertain predictions. If miscalibrated toward overconfidence, the penalty is ineffective, but periodic recalibration on held-out data detects this condition and triggers corrective fine-tuning.
+
+\subsection{Sparse Reward Starvation}
+
+The policy may receive near-zero reward for extended periods, providing insufficient gradient signal for learning. Episode returns concentrated near zero with policy entropy failing to decrease indicate learning has stalled.
+
+The judge provides dense intermediate reward that supplements sparse hard metrics. Even episodes without confirmed labels receive judge scores reflecting detection quality as estimated from episode content. Potential-based reward shaping for suspicious activity detection provides additional signal for intermediate progress toward fraud identification.
+
+\subsection{Mode Collapse in Adversary}
+
+The adversary may learn a single effective attack pattern, with the detector overfitting to this specific pattern and failing against diverse attacks at test time. Low entropy in adversary action distribution and collapse of the detector-adversary reward gap signal this degenerate equilibrium.
+
+Entropy regularization for the adversary encourages diversity in generated attacks. Initialization from a diverse attack library provides starting points spanning multiple fraud typologies. Adversary curriculum that gradually increases sophistication prevents early convergence to simple patterns.
+
+\subsection{Audit Trail Violation}
+
+The system cannot explain why specific transactions were flagged, violating regulatory requirements including GDPR Article 22 governing automated decision-making and BSA/AML documentation requirements for Suspicious Activity Reports.
+
+Episode serialization produces human-readable justifications as an intrinsic part of the architecture. The serialized text includes explicit reason codes for each flagged transaction, attention attribution from the judge encoder identifies which input features contributed to reward scores, and the deterministic serialization protocol ensures reproducibility for audit purposes.
+
+\subsection{Temporal Leakage}
+
+The model may use future information encoded in node identifiers to predict fraud. Transaction graph node IDs are often assigned sequentially, encoding creation time that correlates with fraud patterns. Models achieving suspiciously high performance on historical test sets but degrading on truly prospective evaluation indicate leakage.
+
+Canonical episode serialization with anonymized identifiers prevents leakage. Entity identifiers are replaced with deterministic pseudonyms computed via HMAC, eliminating information content in the IDs themselves. Temporal train-test splits with strict future holdout validate that performance generalizes to prospective detection.
+
+\subsection{Catastrophic Forgetting}
+
+Fine-tuning the judge on recent episodes may destroy performance on historical patterns that remain relevant. Judge performance on held-out historical episodes dropping after updates indicates forgetting.
+
+Elastic Weight Consolidation penalizes updates to parameters important for historical episode evaluation. The replay buffer samples uniformly from the full episode history rather than only recent episodes, maintaining exposure to historical patterns. Judge ensembles that average predictions across checkpoints from different training stages provide robustness against any single checkpoint's blind spots.
+
+\subsection{Gradient Instability}
+
+LoRA fine-tuning with small rank may produce unstable gradients, causing reward signal to oscillate between judge updates. High variance in judge loss, NaN or infinite values in gradients, and reward magnitude oscillation signal instability.
+
+Gradient clipping bounds the maximum gradient norm. Learning rate warmup prevents early updates from destabilizing the pretrained encoder. Larger LoRA rank with regularization provides additional capacity while controlling effective complexity through the regularization term.
+
+\section{Proposed Method}
+
+\subsection{Architecture Overview}
+
+Our framework comprises four interacting components: a transaction graph environment, a detection policy, a learned judge, and a conservative reward computer. The transaction graph, represented as $G = (V, E)$ where vertices are accounts and edges are transactions, provides the substrate on which detection occurs. The multi-agent environment wraps this graph in a Gymnasium-compatible interface supporting both single-agent and adversarial training configurations.
+
+The detection policy observes node features and local graph structure, selecting nodes to flag as suspicious at each timestep. Over an episode spanning multiple timesteps, the policy builds a set of flagged transactions that collectively form the episode's detection output. The adversary, when enabled, operates on the same graph, injecting fraudulent transactions that the detector must identify.
+
+The learned judge receives a serialized text representation of the complete episode, including graph statistics, flagged transactions with features, agent actions with stated reasons, and available confirmed labels. The judge encoder, a ModernBERT model with LoRA adapters, processes this text and produces three outputs: a scalar reward in the range negative one to positive one, a fraud type classification for auxiliary supervision, and an uncertainty estimate for conservative reward adjustment.
+
+The conservative reward computer combines hard metrics computed from confirmed labels with the judge's reward score. Hard metrics provide ground truth anchoring while the judge provides dense signal for episodes where labels are sparse. Clipping, uncertainty penalties, and annealing weights bound the judge's influence and adapt it over training progress.
+
+\subsection{Judge Model Specification}
+
+We build the judge on the ModernBERT-base architecture, a one-hundred-forty-nine million parameter encoder with twenty-two transformer layers and hidden dimension seven hundred sixty-eight. ModernBERT's rotary position embeddings support context lengths up to eight thousand tokens, accommodating our full episode serializations. Flash Attention 2 integration provides memory efficiency critical for processing long sequences during training.
+
+Rather than full fine-tuning, we employ Low-Rank Adaptation with rank sixteen, alpha thirty-two, and dropout probability 0.1. LoRA targets the query, key, value, and output projection matrices in each attention layer, introducing approximately 1.2 million trainable parameters representing less than one percent of the base model. This parameter efficiency enables rapid experimentation while maintaining adaptation capacity sufficient for our discriminative task.
+
+Three output heads branch from the final encoder hidden state. The reward head, a three-layer MLP with dimensions progressing from seven hundred sixty-eight to two hundred fifty-six to sixty-four to one, produces a scalar reward through tanh activation, bounding output to the interval negative one to positive one. The fraud type head provides auxiliary classification signal during training, encouraging the encoder to learn fraud-relevant representations even when reward labels are noisy. The uncertainty head outputs a positive scalar through softplus activation, representing the judge's confidence in its reward prediction.
+
+Training minimizes a composite loss combining reward prediction error, fraud type classification loss, and a negative log-likelihood term under a Gaussian model with the uncertainty head's output as standard deviation. The reward target maps F1 score from the unit interval to negative one to positive one via the transformation $2 \cdot F1 - 1$, aligning reward scale with the classification-centric nature of our metrics.
+
+\subsection{Episode Serialization Protocol}
+
+Converting episodes to canonical text representations requires careful design to prevent information leakage while preserving relevant features. Our serialization protocol produces structured text beginning with episode metadata including a unique identifier computed from episode content, graph statistics summarizing node and edge counts, and the temporal window spanned by transactions.
+
+Flagged transactions appear in a dedicated section with features normalized to prevent scale leakage. Transaction amounts are converted to percentile buckets within the episode rather than raw values that might encode time-varying patterns. Timestamps become relative offsets from episode start. Entity identifiers are replaced with deterministic pseudonyms via HMAC computation, producing consistent mappings within an episode while preventing the model from memorizing identifier-fraud associations.
+
+Transactions are sorted by a canonical hash of their features rather than temporal order, eliminating sequential position as a predictive feature. This order invariance ensures that the judge evaluates episode content rather than presentation artifacts. For episodes exceeding the eight-thousand-token context limit, truncation prioritizes flagged transactions and confirmed labels, which carry the highest information density for reward prediction.
+
+Agent actions appear with explicit reason codes explaining each flag decision. These reasons derive from the policy's internal state and provide signal for the judge to evaluate decision quality beyond simple flag accuracy. Confirmed labels, when available, appear in a separate section enabling the judge to incorporate ground truth in its evaluation.
+
+\subsection{Conservative Reward Formula}
+
+The total reward for an episode combines hard metrics with the judge's output through a carefully constructed formula. Let $P$, $R$, and $F$ denote precision, recall, and F1 score computed from confirmed labels within the episode. Let $r_j$ denote the judge's raw reward output, $\sigma_j$ the uncertainty output, and $\tau$ the clipping bound. Let $w_P$, $w_R$, and $w_F$ denote weights for precision, recall, and F1 respectively, and let $\lambda$ denote the uncertainty penalty coefficient.
+
+The hard metric component is
+\[
+\Rhard = w_P \cdot P + w_R \cdot R + w_F \cdot F
+\]
+where default weights favor recall ($w_R = 0.3$) over precision ($w_P = 0.2$) reflecting the regulatory preference for catching fraud even at the cost of false positives, with F1 ($w_F = 0.4$) providing balance.
+
+The judge component applies uncertainty penalty and clipping:
+\[
+\Rjudge = \text{clip}(r_j - \lambda \sigma_j, -\tau, \tau)
+\]
+with default uncertainty penalty $\lambda = 0.1$ and clip bound $\tau = 0.5$. The clipping ensures that even extreme judge scores cannot exceed half the hard metric scale in magnitude.
+
+The composite reward combines these components with an annealing weight $\alpha(t)$ that increases over training:
+\[
+\Rtotal = \Rhard + \alpha(t) \cdot \Rjudge
+\]
+where $\alpha(t) = \alpha_{\text{start}} + (\alpha_{\text{end}} - \alpha_{\text{start}}) \cdot \min(1, t / T_{\text{warmup}})$. Default values set $\alpha_{\text{start}} = 0.1$, $\alpha_{\text{end}} = 0.3$, and $T_{\text{warmup}} = 5000$ episodes. This schedule begins conservatively with hard metrics dominating, gradually incorporating judge signal as calibration improves.
+
+\subsection{Two-Timescale Training Protocol}
+
+The policy updates on a fast timescale, with PPO optimization occurring after every episode. Standard hyperparameters apply: learning rate $3 \times 10^{-4}$, batch size sixty-four episodes, and gradient clipping at norm 0.5. The policy observes the combined reward signal and adjusts its flagging behavior accordingly.
+
+The judge updates on a slow timescale, with LoRA parameter fine-tuning occurring only every one hundred episodes. Fine-tuning uses episodes from a memory buffer containing the most recent five hundred episodes, with learning rate $10^{-5}$ and cosine decay schedule. Gradient accumulation over four steps stabilizes updates given the small batch sizes necessitated by long sequence lengths. Early stopping on validation MSE prevents overfitting to recent episodes at the expense of generalization.
+
+After five thousand policy episodes, the judge freezes entirely. From this point forward, only hard metrics and cached judge inference contribute to reward computation, with no further judge parameter updates. This freezing prevents late-stage co-adaptation where the policy might exploit subtle shifts in judge behavior introduced by continued fine-tuning.
+
+Exponential moving average smoothing operates continuously, updating a shadow copy of judge parameters with decay 0.995 after every episode. The EMA weights are used for inference during policy training, providing temporally smoothed predictions that reduce reward noise compared to using the rapidly-updating primary weights.
+
+\subsection{Safety Monitoring}
+
+Drift detection computes the Pearson correlation between hard metrics and judge scores over a sliding window of one hundred episodes. If this correlation drops below threshold 0.3, a drift alarm triggers indicating that the judge's evaluations have diverged from ground truth. This may indicate distributional shift, judge overfitting, or emerging reward hacking.
+
+Calibration monitoring computes expected calibration error by discretizing judge confidence into ten bins and comparing mean confidence to mean accuracy within each bin. ECE exceeding threshold 0.15 triggers a calibration alarm indicating that the uncertainty head no longer reliably predicts prediction quality. Recalibration on held-out data addresses this condition.
+
+Hard metric floor enforcement activates when F1 on confirmed labels drops below threshold 0.1 in any episode. This pathological condition indicates complete failure of detection, and the system forces high hard metric weight regardless of the annealing schedule. The judge weight drops to maximum 0.1, ensuring that hard metrics dominate reward until basic detection capability recovers.
+
+\section{Experimental Plan}
+
+\subsection{Datasets}
+
+We evaluate on four datasets spanning synthetic and real transaction graphs. The Elliptic Bitcoin dataset provides the primary real-world benchmark, with approximately two hundred three thousand nodes, two hundred thirty-four thousand edges, and 2.2\% confirmed illicit nodes distributed across forty-nine temporal steps \citep{weber2019anti}. The temporal structure enables evaluation of model robustness to distribution shift.
+
+Three synthetic datasets generated using AMLSim provide controlled experimental conditions. The small synthetic dataset contains fifty thousand nodes and two hundred thousand edges with one percent injected fraud. The large synthetic dataset scales to five hundred thousand nodes and two million edges with 0.5\% fraud, testing scalability. The IBM AMLSim configuration provides one hundred thousand nodes and five hundred thousand edges with parameterized fraud typologies enabling ablation of detection across different fraud patterns.
+
+\subsection{Baselines}
+
+Six baselines establish performance context for our proposed method. The rule-based baseline implements hand-crafted SAR rules including transaction threshold, velocity, and structuring detection, establishing the regulatory status quo with expected F1 between 0.15 and 0.25. A GCN with hard metrics only provides the supervised learning baseline using standard graph convolution with sparse label supervision, achieving expected F1 between 0.70 and 0.75 on Elliptic.
+
+Two ablation baselines isolate the judge's contribution. The random reward baseline replaces the learned judge with random scores, expected to perform slightly worse than hard metrics only due to noise injection. The uncalibrated judge baseline removes clipping, uncertainty penalties, and anchoring, testing whether safety mechanisms are necessary or whether the raw judge signal suffices.
+
+A PPO baseline with hard metrics only provides the RL comparison point without learned reward, expected to match or slightly underperform the GCN baseline due to the challenges of sparse reward in RL. Finally, an RLAIF baseline using GPT-4 as reward model provides an expensive upper bound on judge quality, though practical deployment would require the more efficient ModernBERT approach.
+
+\subsection{Ablation Studies}
+
+Five ablation dimensions examine key design choices. Ablation A varies the judge weight schedule across five conditions: no judge ($\alpha = 0$), fixed low weight ($\alpha = 0.1$), fixed high weight ($\alpha = 0.5$), linear annealing from 0.1 to 0.3, and adaptive weighting proportional to calibration score. We hypothesize that linear annealing provides the best balance between early conservatism and late-training signal utilization.
+
+Ablation B varies uncertainty penalty $\lambda$ across four levels: zero, 0.05, 0.1, and 0.2. Higher penalties may over-suppress correct but uncertain predictions, while zero penalty may allow overconfident errors to dominate reward. We expect moderate penalty around 0.1 to perform best.
+
+Ablation C varies judge update frequency across five conditions: every ten episodes, fifty episodes, one hundred episodes, five hundred episodes, and never (pretrained judge frozen from the start). More frequent updates risk co-adaptation while less frequent updates may fail to track distribution shift.
+
+Ablation D varies clip bound $\tau$ across four levels: no clipping, tight clipping at 0.2, moderate clipping at 0.5, and loose clipping at 0.8. Tighter clipping provides more conservative reward at the potential cost of limited judge signal.
+
+Ablation E examines adversary configurations: no adversary, random fraud injection, learned adversary, and curriculum adversary with increasing difficulty. We hypothesize that learned adversary training produces the most robust detectors.
+
+\subsection{Evaluation Metrics}
+
+Primary metrics focus on detection quality. Illicit F1 measures balanced precision-recall on fraud detection with target exceeding 0.75. Illicit recall measures fraud recall specifically, with regulatory-motivated target exceeding 0.85 reflecting the preference for catching fraud even at false positive cost. Precision at one hundred measures precision among the top one hundred flagged transactions, targeting at least 0.50 to ensure investigator time is well-spent. Alert reduction measures the decrease in false positives compared to the rule-based baseline, targeting at least thirty percent reduction.
+
+Safety and robustness metrics evaluate our protective mechanisms. Judge-hard correlation measures Pearson correlation between judge scores and F1 over episodes, with threshold 0.3 indicating alignment. Expected calibration error should remain below 0.15. Reward exploitation score, computed as the maximum difference between judge reward and hard F1 over episodes, should remain below 0.3 indicating bounded exploitation. Temporal degradation, the F1 drop from early to late time steps, should remain below ten percent.
+
+Adversarial robustness metrics evaluate multi-agent training outcomes. Adversary win rate, the fraction of episodes where adversary reward exceeds detector reward, should remain below forty percent. Post-attack F1 measures detection quality after adversary fraud injection in test episodes, targeting at least 0.65. Novel pattern detection measures F1 on fraud types withheld from training, targeting at least 0.50.
+
+\subsection{Statistical Protocol}
+
+All experiments run with five random seeds per configuration. We report mean and standard deviation across seeds, with p-values for comparisons between methods computed via two-sided t-test at significance level 0.05 with Bonferroni correction for multiple comparisons. Learning curves are plotted every one hundred episodes with exponential moving average smoothing at decay 0.9 for visual clarity.
+
+The total compute budget is approximately five hundred GPU-hours on A100-40GB equivalent hardware, distributed across the ablation grid. Infrastructure validation and baseline implementation occupy weeks one and two. Judge pre-training on the labeled subset and initial calibration occur in weeks three and four. Main ablations run in weeks five through eight, with adversarial experiments in weeks nine and ten. Statistical analysis, figure generation, and writing complete the twelve-week timeline in weeks eleven and twelve.
+
+\section{Reproducibility and Auditability}
+
+\subsection{Code Artifacts}
+
+Implementation of the complete framework resides in the \texttt{rl\_money\_laundering.multiagent} module. The judge model architecture including LoRA configuration is implemented in \texttt{judge\_model.py}. Episode serialization with canonical ordering and identifier anonymization appears in the \texttt{EpisodeSerializer} class within the same file. Reward computation logic resides in \texttt{reward\_computation.py} with the \texttt{ConservativeRewardComputer} class implementing the full formula with annealing and safety bounds.
+
+The multi-agent environment in \texttt{multi\_agent\_env.py} provides the Gymnasium-compatible interface with \texttt{MultiAgentAMLEnvironment} supporting both single-agent and adversarial configurations. Training callbacks in \texttt{training\_callbacks.py} implement two-timescale scheduling, safety monitoring, and detailed metrics logging.
+
+Remaining implementation work includes training scripts, evaluation scripts, and ablation runners. Configuration files for each experimental condition will specify all hyperparameters in YAML format. Version control with git SHA logging ensures reproducibility of each experimental run.
+
+\subsection{Data Documentation}
+
+The Elliptic Bitcoin dataset is available from Kaggle with documented preprocessing for temporal splitting and node feature normalization. AMLSim synthetic data is generated via the open-source framework with parameter configurations provided in the repository's configuration directory. Judge pre-training data, consisting of preference pairs derived from labeled episodes, is generated via documented scripts enabling reproduction of the judge training process.
+
+\subsection{Hyperparameter Documentation}
+
+All hyperparameters are documented with justification from literature. The ModernBERT-base model selection follows Warner et al.'s finding that it represents the best encoder in its parameter class. LoRA rank sixteen follows Hu et al.'s recommendation of rank between eight and sixty-four for balanced capacity and efficiency. Judge learning rate $10^{-5}$ is standard for LoRA fine-tuning of pretrained encoders.
+
+Reward configuration defaults follow from safety principles articulated in the conservative RL literature. Judge weight starting at 0.1 and ending at 0.3 bounds learned reward influence per Levine et al.'s warnings about learned reward dominance. Clip maximum 0.5 ensures judge cannot exceed fifty percent of hard metric scale. Policy learning rate $3 \times 10^{-4}$ follows Schulman et al.'s PPO recommendations.
+
+\subsection{Regulatory Compliance}
+
+The system addresses regulatory requirements through architectural design rather than post-hoc compliance. BSA/AML requirements for Suspicious Activity Report documentation are satisfied through episode serialization that produces human-readable justification for each flagged transaction. GDPR Article 22 requirements for explanation of automated decisions are addressed through attention attribution from the judge encoder combined with the explicit reasoning in serialized episodes.
+
+Model risk management per SR 11-7 requires model validation and documentation, provided through this document, the experimental protocol, and calibration monitoring during deployment. Fair lending requirements prohibiting discriminatory patterns are addressed through feature normalization that removes protected attributes and through evaluation disaggregated across demographic groups in the transaction graph.
+
+\section{Conclusion}
+
+This document has presented a comprehensive framework for combining learned judge models with hard metric anchoring in graph-based AML detection. The framework addresses the fundamental tension between dense reward signal, which learned models provide but which risks exploitation, and ground truth anchoring, which hard metrics provide but which arrives too sparsely for effective learning. Through conservative reward composition, two-timescale training, and safety monitoring, we bound the risks of learned reward while capturing its benefits.
+
+The experimental plan provides a systematic evaluation across multiple datasets, baselines, and ablations, with statistical rigor appropriate for publication. The reproducibility checklist ensures that results can be verified and extended by other researchers. Regulatory compliance considerations ensure that the system can be deployed in production financial environments where explainability and auditability are mandatory.
+
+Future work may explore additional judge architectures beyond ModernBERT, alternative uncertainty quantification methods, and extension to multi-hop graph reasoning where current serialization approaches may lose structural information. The framework's modular design supports such extensions while maintaining the safety properties established in this document.
+
+\bibliographystyle{plainnat}
+\bibliography{references}
+
+\appendix
+
+\section{MVP Design Decisions}
+
+This appendix documents five concrete design decisions for the minimum viable product implementation, with citations justifying each choice.
+
+\subsection{ModernBERT over Decoder Architectures}
+
+We select ModernBERT-base as the judge encoder rather than GPT-style decoder models. Episode evaluation is a discriminative task requiring assignment of a scalar reward rather than generation of text. Encoder architectures achieve higher accuracy on classification and regression tasks with an order of magnitude fewer parameters than comparably-performing decoders \citep{warner2024modernbert}. Bidirectional attention captures full episode context in a single forward pass without the quadratic cost of autoregressive generation. The eight-thousand-token context window accommodates full episodes without chunking. LoRA fine-tuning achieves comparable performance to full fine-tuning at less than one percent of the parameter cost \citep{hu2021lora}.
+
+\subsection{Hard Metric Anchoring over KL Regularization}
+
+We anchor reward to hard metrics rather than regularizing via KL divergence from a reference policy. KL regularization keeps the policy close to a reference distribution but provides no guarantee about outcome quality. Hard metrics computed from precision and recall on confirmed labels directly measure detection quality. In AML, ground truth eventually becomes available as investigations resolve, unlike pure preference learning domains where human judgment is the only signal. Banking regulators require metrics tied to actual outcomes rather than model preferences. Ouyang et al. observed reward hacking with pure learned rewards motivating our anchoring approach \citep{ouyang2022training}. Ng et al. established that reward shaping must preserve optimal policy, which hard metrics do while KL regularization does not guarantee \citep{ng1999policy}.
+
+\subsection{Two-Timescale Training}
+
+We update the judge every one hundred episodes and freeze after five thousand, maintaining strict separation from the policy's per-episode updates. Joint training causes co-adaptation where the policy learns to produce judge-pleasing outputs regardless of ground truth quality \citep{levine2020offline}. Slower judge updates ensure the judge evaluates diverse policy behaviors before updating its parameters. Freezing the judge after warmup allows the policy to converge to a stable optimum without a moving target. Similar two-timescale principles appear in successful actor-critic algorithms including SAC \citep{haarnoja2018soft}.
+
+\subsection{Canonical Serialization with ID Anonymization}
+
+We serialize episodes to text with deterministic ordering and pseudonymized entity identifiers. Node and edge IDs in transaction graphs often encode temporal information through sequential assignment, enabling models to learn shortcuts based on recency rather than genuine fraud patterns \citep{weber2019anti}. Anonymization through HMAC-computed pseudonyms eliminates information content in identifiers while maintaining consistency within episodes. Canonical ordering by feature hash ensures identical episodes always produce identical text. Human-readable format enables auditor inspection as required by GDPR Article 22 and BSA/AML documentation requirements.
+
+\subsection{Uncertainty Penalty over Confidence Thresholding}
+
+We apply a continuous uncertainty penalty rather than discarding predictions below a confidence threshold. Threshold-based discarding creates discontinuities in reward signal that complicate policy optimization. The penalty $\Rjudge - \lambda \sigma_j$ smoothly down-weights uncertain predictions without discarding their information content. This approach encourages the judge to maintain calibration: overconfident wrong predictions receive higher penalties than appropriately uncertain ones. The pessimism principle from Conservative Q-Learning establishes the value of uncertainty-aware value estimation \citep{kumar2020conservative}. Guo et al. document that neural networks are often miscalibrated, motivating explicit uncertainty handling \citep{guo2017calibration}.
+
+\end{document}

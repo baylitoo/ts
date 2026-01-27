@@ -1,0 +1,127 @@
+version: '3.8'
+
+services:
+  # Main RL training service
+  rl-trainer:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: rl-aml-detection:latest
+    container_name: rl-aml-trainer
+
+    # GPU configuration for H100
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1  # Use 1 H100 (change to 'all' for multi-GPU)
+              capabilities: [gpu]
+
+    # Environment variables
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+      - PYTHONPATH=/app/src
+      - TORCH_CUDA_ARCH_LIST=9.0  # H100 compute capability
+      - NVIDIA_VISIBLE_DEVICES=all
+      - NVIDIA_DRIVER_CAPABILITIES=compute,utility
+
+    # Mount volumes
+    volumes:
+      # Data directory (read-only for safety)
+      - ./data:/app/data:ro
+      # Outputs (training logs, checkpoints)
+      - ./outputs:/app/outputs
+      # Checkpoints (model saves)
+      - ./checkpoints:/app/checkpoints
+      # Source code (for development - hot reload)
+      - ./src:/app/src
+      - ./scripts:/app/scripts
+
+    # Working directory
+    working_dir: /app
+
+    # Default command (override with docker-compose run)
+    command: ["uv", "run", "python", "scripts/train_agent_v2.py", "--config", "quick_test"]
+
+    # Keep container running for interactive use
+    stdin_open: true
+    tty: true
+
+    # Network
+    networks:
+      - rl-network
+
+  # TensorBoard for monitoring
+  tensorboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: rl-aml-detection:latest
+    container_name: rl-tensorboard
+
+    command: ["uv", "run", "tensorboard", "--logdir", "/app/outputs", "--host", "0.0.0.0", "--port", "6006"]
+
+    ports:
+      - "6006:6006"
+
+    volumes:
+      - ./outputs:/app/outputs:ro
+
+    networks:
+      - rl-network
+
+    depends_on:
+      - rl-trainer
+
+  # Jupyter notebook for experiments (optional)
+  jupyter:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: rl-aml-detection:latest
+    container_name: rl-jupyter
+
+    # GPU access for interactive experiments
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1
+              capabilities: [gpu]
+
+    environment:
+      - CUDA_VISIBLE_DEVICES=0
+      - PYTHONPATH=/app/src
+      - JUPYTER_ENABLE_LAB=yes
+
+    command:
+      - /bin/bash
+      - -c
+      - |
+        uv run jupyter lab \
+          --ip=0.0.0.0 \
+          --port=8888 \
+          --no-browser \
+          --allow-root \
+          --NotebookApp.token='' \
+          --NotebookApp.password=''
+
+    ports:
+      - "8888:8888"
+
+    volumes:
+      - ./data:/app/data:ro
+      - ./outputs:/app/outputs
+      - ./checkpoints:/app/checkpoints
+      - ./src:/app/src
+      - ./scripts:/app/scripts
+      - ./notebooks:/app/notebooks
+
+    networks:
+      - rl-network
+
+networks:
+  rl-network:
+    driver: bridge
