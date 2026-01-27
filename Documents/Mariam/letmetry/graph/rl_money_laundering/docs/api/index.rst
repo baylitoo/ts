@@ -49,6 +49,9 @@ API Reference
 
    rl_money_laundering.evaluation
    rl_money_laundering.evaluation.budgeted_metrics
+   rl_money_laundering.evaluation.metrics
+   rl_money_laundering.evaluation.calibration_metrics
+   rl_money_laundering.evaluation.rl_metrics
 
 .. autosummary::
    :toctree: generated
@@ -82,5 +85,66 @@ API Reference
    rl_money_laundering.utils
    rl_money_laundering.utils.graph
    rl_money_laundering.utils.features
+   rl_money_laundering.utils.graph_replay
    rl_money_laundering.utils.checkpoint
    rl_money_laundering.utils.experiment
+   rl_money_laundering.utils.runtime_metrics
+
+.. autosummary::
+   :toctree: generated
+   :caption: Multi-Agent
+   :recursive:
+
+   rl_money_laundering.multiagent
+   rl_money_laundering.multiagent.multi_agent_env
+   rl_money_laundering.multiagent.judge_model
+   rl_money_laundering.multiagent.reward_computation
+   rl_money_laundering.multiagent.training_callbacks
+   rl_money_laundering.multiagent.coordination
+
+.. autosummary::
+   :toctree: generated
+   :caption: Multi-Agent Integration
+   :recursive:
+
+   rl_money_laundering.multiagent.integration
+   rl_money_laundering.multiagent.integration.environment_adapter
+   rl_money_laundering.multiagent.integration.encoder_bridge
+   rl_money_laundering.multiagent.integration.reward_integrator
+   rl_money_laundering.multiagent.integration.training_orchestrator
+   rl_money_laundering.multiagent.integration.config
+
+.. autosummary::
+   :toctree: generated
+   :caption: Data Preparation
+   :recursive:
+
+   rl_money_laundering.dataprep
+   rl_money_laundering.dataprep.base
+   rl_money_laundering.dataprep.cleaning
+   rl_money_laundering.dataprep.pii_scrubber
+   rl_money_laundering.dataprep.dedup
+   rl_money_laundering.dataprep.corpus_builder
+   rl_money_laundering.dataprep.pipeline
+   rl_money_laundering.dataprep.fincen_loader
+   rl_money_laundering.dataprep.fatf_loader
+   rl_money_laundering.dataprep.sec_fraud_loader
+   rl_money_laundering.dataprep.fraudnlp_loader
+   rl_money_laundering.dataprep.opensanctions_loader
+   rl_money_laundering.dataprep.gdelt_loader
+   rl_money_laundering.dataprep.venmo_loader
+
+.. autosummary::
+   :toctree: generated
+   :caption: Pretraining
+   :recursive:
+
+   rl_money_laundering.pretraining
+   rl_money_laundering.pretraining.config
+   rl_money_laundering.pretraining.collators
+   rl_money_laundering.pretraining.trainer
+   rl_money_laundering.pretraining.supervised_heads
+   rl_money_laundering.pretraining.ranking_loss
+   rl_money_laundering.pretraining.judge_finetuning
+   rl_money_laundering.pretraining.pretokenize
+   rl_money_laundering.pretraining.scripts

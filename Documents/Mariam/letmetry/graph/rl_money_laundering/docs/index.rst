@@ -14,6 +14,7 @@ Welcome to the RL Money Laundering Docs
 
    RECENT_UPDATES
    getting_started
+   package_overview
    architecture
    experiments
    RLLIB_INTEGRATION
