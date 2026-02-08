@@ -983,15 +983,19 @@ class CoordinatedMultiAgentEnv(gym.Env):
         # Execute base step
         base_obs, reward, terminated, truncated, info = self.base_env.step(action)
 
-        # Run coordination step
+        # Run coordination step through CTDE wrapper (respects training/execution mode)
         coord_obs = self._build_coordination_observation()
-        coord_results = self.coordinator.step(coord_obs, action)
+        ctde_result = self.ctde.process_observation(coord_obs, rl_action=action)
 
-        self._last_proposals = coord_results.get("proposals", [])
-        self._last_scores = coord_results.get("scores", [])
+        self._last_proposals = ctde_result.get("coord_training_data", {}).get("proposals", [])
+        self._last_scores = ctde_result.get("coord_training_data", {}).get("scores", [])
 
         # Augment observation
-        augmented_obs = self._augment_observation(base_obs, coord_obs)
+        aug_vector = ctde_result.get(
+            "coordination_augmentation",
+            np.zeros(self.augmentor.get_augmentation_dim(), dtype=np.float32),
+        )
+        augmented_obs = np.concatenate([base_obs, aug_vector], dtype=np.float32)
 
         # Add coordination info to info dict
         info["coordination"] = {
@@ -1001,7 +1005,7 @@ class CoordinatedMultiAgentEnv(gym.Env):
                 1 for p in self._last_proposals
                 if hasattr(p, "is_high_priority") and p.is_high_priority
             ),
-            "recommended_action": coord_results.get("recommended_action"),
+            "recommended_action": ctde_result.get("coord_training_data", {}).get("recommended_action"),
         }
 
         # Handle episode end

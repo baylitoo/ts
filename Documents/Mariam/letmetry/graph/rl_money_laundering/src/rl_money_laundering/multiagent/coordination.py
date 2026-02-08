@@ -971,20 +971,29 @@ class MultiAgentCoordinator:
             # Get judge score (simplified - actual uses model forward)
             # In production, batch these for efficiency
             try:
-                if hasattr(self.judge_model, "score_proposal"):
-                    result = self.judge_model.score_proposal(proposal, observation)
+                if hasattr(self.judge_model, "compute_reward"):
+                    episode_dict = {
+                        "proposal_id": proposal_id,
+                        "node_id": getattr(proposal, "node_id", None),
+                        "suspiciousness": getattr(proposal, "suspiciousness_score", 0.5),
+                        "observation": observation,
+                    }
+                    reward_value, metadata = self.judge_model.compute_reward(
+                        episode=episode_dict,
+                        conservative=True,
+                    )
                     scores.append(JudgeScore(
                         proposal_id=proposal_id,
-                        score=result.get("score", 0.0),
-                        confidence=result.get("confidence", 0.5),
-                        fraud_type=result.get("fraud_type"),
-                        reasoning=result.get("reasoning", ""),
+                        score=reward_value,
+                        confidence=1.0 - metadata.get("uncertainty", 0.5),
+                        fraud_type=metadata.get("fraud_type"),
+                        reasoning=str(metadata.get("fraud_type_probs", "")),
                     ))
                 else:
                     # Fallback: use suspiciousness score as proxy
                     scores.append(JudgeScore(
                         proposal_id=proposal_id,
-                        score=proposal.suspiciousness_score * 2 - 1,  # Map to [-1, 1]
+                        score=proposal.suspiciousness_score * 2 - 1,
                         confidence=0.5,
                     ))
             except Exception as e:

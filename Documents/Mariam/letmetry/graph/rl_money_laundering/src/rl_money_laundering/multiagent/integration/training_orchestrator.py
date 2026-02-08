@@ -29,9 +29,10 @@ class AgentProtocol(Protocol):
     def select_action(
         self,
         state: Any,
+        valid_actions: Optional[Any] = None,
         epsilon: Optional[float] = None,
-        hints: Optional[Any] = None,
-    ) -> tuple[int, float]: ...
+        neighbor_hints: Optional[Any] = None,
+    ) -> int: ...
 
     def store_transition(
         self,
@@ -40,7 +41,7 @@ class AgentProtocol(Protocol):
         reward: float,
         next_state: Any,
         done: bool,
-        info: Optional[Dict[str, Any]] = None,
+        is_fraud: bool = False,
     ) -> None: ...
 
     def train_step(self) -> Optional[Dict[str, float]]: ...
@@ -63,10 +64,9 @@ class JudgeCallbackProtocol(Protocol):
         self,
         episode: int,
         episode_data: Any,
-        labels: Any,
+        true_labels: Optional[Any] = None,
+        policy_metrics: Optional[Dict[str, float]] = None,
     ) -> Dict[str, Any]: ...
-
-    def should_update(self, episode: int) -> bool: ...
 
 
 @dataclass
@@ -248,7 +248,7 @@ class TrainingOrchestrator:
         if curriculum_schedule is None:
             curriculum_schedule = [1.0, 0.5, 0.2, 0.1]
 
-        episodes_per_stage = num_episodes // len(curriculum_schedule)
+        episodes_per_stage = max(1, num_episodes // len(curriculum_schedule))
         episodes_without_improvement = 0
 
         try:
@@ -274,14 +274,13 @@ class TrainingOrchestrator:
                     episodes_without_improvement += 1
 
                 if self._judge_callback and self.config.judge_config.enable_judge:
-                    if self._judge_callback.should_update(episode):
-                        episode_data = self._collector.get_recent_episodes(100)
-                        if episode_data:
-                            self._judge_callback.on_episode_end(
-                                episode=episode,
-                                episode_data=episode_data,
-                                labels=None,
-                            )
+                    episode_data = self._collector.get_recent_episodes(1)
+                    if episode_data:
+                        self._judge_callback.on_episode_end(
+                            episode=episode,
+                            episode_data=episode_data[-1].to_dict(),
+                            true_labels=None,
+                        )
 
                 if episode > 0 and episode % self._log_frequency == 0:
                     self._log_progress(episode)
@@ -323,7 +322,8 @@ class TrainingOrchestrator:
         """
         start_node = self._sample_start_node()
 
-        obs, info = self._env_adapter.reset(start_node=start_node)
+        reset_options = {"start_node": start_node} if start_node is not None else None
+        obs, info = self._env_adapter.reset(options=reset_options)
 
         state = self._encode_state(obs)
         episode_reward = 0.0
@@ -332,10 +332,10 @@ class TrainingOrchestrator:
 
         while not done:
             hints = self._get_neighbor_hints()
-            action, confidence = self._agent.select_action(state, hints=hints)
+            action = self._agent.select_action(state, neighbor_hints=hints)
 
             next_obs, reward, terminated, truncated, info = self._env_adapter.step(
-                action, confidence=confidence
+                action
             )
             done = terminated or truncated
 
@@ -343,13 +343,14 @@ class TrainingOrchestrator:
 
             next_state = self._encode_state(next_obs) if not done else state
 
+            is_fraud = info.get("is_fraud", False) if info else False
             self._agent.store_transition(
                 state=state,
                 action=action,
                 reward=step_reward,
                 next_state=next_state,
                 done=done,
-                info=info,
+                is_fraud=is_fraud,
             )
 
             self._agent.train_step()
@@ -369,6 +370,19 @@ class TrainingOrchestrator:
             episode_data=episode_data,
             episode_text=episode_text,
         )
+
+        # Redistribute judge bonus into the agent's final transition so the
+        # episode-level judge signal actually influences policy learning.
+        judge_bonus = combined_reward - episode_reward
+        if abs(judge_bonus) > 1e-6 and episode_length > 0:
+            self._agent.store_transition(
+                state=state,
+                action=action,
+                reward=judge_bonus,
+                next_state=state,
+                done=True,
+                is_fraud=info.get("is_fraud", False) if info else False,
+            )
 
         if episode_num % 10 == 0:
             self._agent.update_target_network()
@@ -457,7 +471,7 @@ class TrainingOrchestrator:
             done = False
 
             while not done:
-                action, _ = self._agent.select_action(state, epsilon=0.0)
+                action = self._agent.select_action(state, epsilon=0.0)
                 obs, reward, terminated, truncated, info = self._env_adapter.step(action)
                 done = terminated or truncated
                 state = self._encode_state(obs) if not done else state
@@ -480,7 +494,7 @@ class TrainingOrchestrator:
         if self._checkpoint_dir is None:
             return
 
-        checkpoint_path = self._checkpoint_dir / f"checkpoint_ep{episode}.pt"
+        checkpoint_path = self._checkpoint_dir / f"checkpoint_ep{episode}.json"
         self._checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
         checkpoint = {
@@ -491,7 +505,7 @@ class TrainingOrchestrator:
         }
 
         import json
-        with open(checkpoint_path.with_suffix(".json"), "w") as f:
+        with open(checkpoint_path, "w") as f:
             json.dump(checkpoint, f, indent=2, default=str)
 
         logger.info(f"Saved checkpoint to {checkpoint_path}")

@@ -23,9 +23,10 @@ class JudgeProtocol(Protocol):
 
     def compute_reward(
         self,
-        episode_text: str,
-        return_uncertainty: bool = True,
-    ) -> Dict[str, Any]: ...
+        episode: Dict[str, Any],
+        graph_embedding: Optional[Any] = None,
+        conservative: bool = True,
+    ) -> tuple[float, Dict[str, Any]]: ...
 
 
 @dataclass
@@ -228,12 +229,17 @@ class RewardIntegrator:
                 episode_text = self._text_builder(episode_data)
 
             if episode_text:
-                judge_output = self._judge.compute_reward(
-                    episode_text=episode_text,
-                    return_uncertainty=True,
+                episode_dict = (
+                    episode_data.to_dict()
+                    if hasattr(episode_data, "to_dict")
+                    else {"text": episode_text}
                 )
-                judge_reward = judge_output.get("reward", 0.0)
-                judge_uncertainty = judge_output.get("uncertainty", 1.0)
+                reward_value, metadata = self._judge.compute_reward(
+                    episode=episode_dict,
+                    conservative=True,
+                )
+                judge_reward = reward_value
+                judge_uncertainty = metadata.get("uncertainty", 1.0)
                 judge_available = True
 
         hard_metrics = self._compute_hard_metrics(episode_data)

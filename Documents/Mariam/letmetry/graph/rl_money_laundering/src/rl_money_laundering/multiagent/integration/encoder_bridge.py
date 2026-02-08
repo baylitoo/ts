@@ -24,11 +24,12 @@ class StateEncoderProtocol(Protocol):
     def forward_state(
         self,
         graph: Any,
-        node_id: Any,
+        current_node: Any,
         visited_nodes: set,
-        visited_edges: set,
-        edge_time: Optional[float] = None,
-    ) -> Tuple[Any, Any, Dict[str, Any]]: ...
+        visited_edges: list,
+        node_feature_extractor: Any,
+        return_auxiliary: bool = False,
+    ) -> Tuple[Any, Any, Optional[Dict[str, Any]]]: ...
 
 
 class JudgeModelProtocol(Protocol):
@@ -36,9 +37,10 @@ class JudgeModelProtocol(Protocol):
 
     def compute_reward(
         self,
-        episode_text: str,
-        return_uncertainty: bool = True,
-    ) -> Dict[str, Any]: ...
+        episode: Dict[str, Any],
+        graph_embedding: Optional[Any] = None,
+        conservative: bool = True,
+    ) -> Tuple[float, Dict[str, Any]]: ...
 
 
 @dataclass
@@ -128,6 +130,7 @@ class EncoderBridge:
         cache_embeddings: bool = True,
         cache_size: int = 10000,
         include_judge_features: bool = False,
+        node_feature_extractor: Optional[Any] = None,
     ) -> None:
         """Initialize encoder bridge.
 
@@ -137,10 +140,12 @@ class EncoderBridge:
             cache_embeddings: Whether to cache node embeddings.
             cache_size: Maximum cache size.
             include_judge_features: Add judge-derived features to state.
+            node_feature_extractor: Callable to extract features for PyG conversion.
         """
         self._state_encoder = state_encoder
         self._judge_model = judge_model
         self._include_judge_features = include_judge_features
+        self._node_feature_extractor = node_feature_extractor
 
         self._cache: Optional[EmbeddingCache] = None
         if cache_embeddings:
@@ -195,10 +200,11 @@ class EncoderBridge:
 
         embedding, history, aux = self._state_encoder.forward_state(
             graph=graph,
-            node_id=node_id,
+            current_node=node_id,
             visited_nodes=visited_nodes,
-            visited_edges=visited_edges,
-            edge_time=edge_time,
+            visited_edges=list(visited_edges),
+            node_feature_extractor=self._node_feature_extractor,
+            return_auxiliary=True,
         )
 
         embedding_np = self._to_numpy(embedding)
@@ -280,10 +286,18 @@ class EncoderBridge:
         if episode_id in self._episode_judge_cache:
             return self._episode_judge_cache[episode_id]
 
-        result = self._judge_model.compute_reward(
-            episode_text=episode_text,
-            return_uncertainty=True,
+        episode_dict = {"text": episode_text}
+        reward_value, metadata = self._judge_model.compute_reward(
+            episode=episode_dict,
+            conservative=True,
         )
+
+        result = {
+            "reward": reward_value,
+            "uncertainty": metadata.get("uncertainty", 1.0),
+            "available": True,
+            **metadata,
+        }
 
         self._episode_judge_cache[episode_id] = result
 

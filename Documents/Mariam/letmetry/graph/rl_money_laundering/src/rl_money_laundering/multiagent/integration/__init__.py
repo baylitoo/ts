@@ -53,9 +53,9 @@ Design Principles:
 
 from .config import IntegrationConfig, JudgeIntegrationConfig, AdversaryConfig
 from .environment_adapter import EnvironmentAdapter, EpisodeCollector
-from .encoder_bridge import EncoderBridge, EmbeddingCache
+from .encoder_bridge import EncoderBridge, EmbeddingCache, EpisodeTextBuilder
 from .reward_integrator import RewardIntegrator, RewardMetrics
-from .training_orchestrator import TrainingOrchestrator, TrainingState
+from .training_orchestrator import TrainingOrchestrator, TrainingState, create_integrated_trainer
 
 __all__ = [
     # Configuration
@@ -68,10 +68,12 @@ __all__ = [
     # Encoder
     "EncoderBridge",
     "EmbeddingCache",
+    "EpisodeTextBuilder",
     # Reward
     "RewardIntegrator",
     "RewardMetrics",
     # Training
     "TrainingOrchestrator",
     "TrainingState",
+    "create_integrated_trainer",
 ]

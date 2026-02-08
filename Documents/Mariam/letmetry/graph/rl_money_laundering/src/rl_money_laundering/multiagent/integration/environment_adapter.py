@@ -183,14 +183,15 @@ class EpisodeCollector:
         self._episode_counter += 1
         episode_id = self._generate_episode_id(start_node)
 
+        self._step_count = 0
+        self._cumulative_reward = 0.0
+        self._id_map.clear()
+
         self._current_episode = EpisodeData(
             episode_id=episode_id,
             start_node=self._anonymize(start_node),
             graph_stats=graph_stats or self._compute_graph_stats(env),
         )
-        self._step_count = 0
-        self._cumulative_reward = 0.0
-        self._id_map.clear()
 
     def record_step(
         self,
@@ -251,12 +252,9 @@ class EpisodeCollector:
             else:
                 self._current_episode.false_positives += 1
 
-        if is_fraud and self._anonymize(node_id) not in [
-            self._anonymize(n) for n in self._current_episode.fraud_nodes_encountered
-        ]:
-            self._current_episode.fraud_nodes_encountered.append(
-                self._anonymize(node_id)
-            )
+        anon_id = self._anonymize(node_id)
+        if is_fraud and anon_id not in self._current_episode.fraud_nodes_encountered:
+            self._current_episode.fraud_nodes_encountered.append(anon_id)
 
     def end_episode(
         self,
@@ -475,19 +473,20 @@ class EnvironmentAdapter:
         Returns:
             Standard Gymnasium step output.
         """
-        obs, reward, terminated, truncated, info = self._env.step(action, **kwargs)
+        decision_node = getattr(self._env, "current_node", self._last_node)
+
+        obs, reward, terminated, truncated, info = self._env.step(action, confidence=confidence, **kwargs)
 
         if self._enable_collection and self._in_episode:
-            current_node = getattr(self._env, "current_node", self._last_node)
             self._collector.record_step(
-                node_id=current_node,
+                node_id=decision_node,
                 action=action,
                 reward=reward,
                 confidence=confidence,
                 env=self._env,
                 info=info,
             )
-            self._last_node = current_node
+            self._last_node = getattr(self._env, "current_node", decision_node)
 
             if terminated or truncated:
                 self._in_episode = False
