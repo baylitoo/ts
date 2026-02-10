@@ -335,6 +335,23 @@ class ConservativeRewardComputer:
 
         return reward, metadata
 
+    def compute_reward(
+        self,
+        episode_data: Dict[str, Any],
+        *,
+        original_reward: float = 0.0,
+        true_labels: Optional[Dict[str, bool]] = None,
+        graph_embedding: Optional[Tensor] = None,
+        episode_text: Optional[str] = None,
+    ) -> Tuple[float, Dict[str, Any]]:
+        """Canonical reward interface compatible with integrator-style callers."""
+        del original_reward, episode_text
+        return self.compute_episode_reward(
+            episode_data=episode_data,
+            true_labels=true_labels,
+            graph_embedding=graph_embedding,
+        )
+
     def compute_episode_reward(
         self,
         episode_data: Dict[str, Any],

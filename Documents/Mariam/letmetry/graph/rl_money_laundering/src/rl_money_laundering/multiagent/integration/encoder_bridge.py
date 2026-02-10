@@ -15,6 +15,8 @@ from typing import Any, Dict, List, Optional, Protocol, Tuple
 
 import numpy as np
 
+from ...protocols import EncoderBridgeProtocol, JudgeModelProtocol
+
 logger = logging.getLogger(__name__)
 
 
@@ -30,17 +32,6 @@ class StateEncoderProtocol(Protocol):
         node_feature_extractor: Any,
         return_auxiliary: bool = False,
     ) -> Tuple[Any, Any, Optional[Dict[str, Any]]]: ...
-
-
-class JudgeModelProtocol(Protocol):
-    """Protocol for judge model interface."""
-
-    def compute_reward(
-        self,
-        episode: Dict[str, Any],
-        graph_embedding: Optional[Any] = None,
-        conservative: bool = True,
-    ) -> Tuple[float, Dict[str, Any]]: ...
 
 
 @dataclass
@@ -113,7 +104,7 @@ class EncoderOutput:
         return np.concatenate(components)
 
 
-class EncoderBridge:
+class EncoderBridge(EncoderBridgeProtocol):
     """Bridge connecting StateEncoder with JudgeModel.
 
     This bridge:
