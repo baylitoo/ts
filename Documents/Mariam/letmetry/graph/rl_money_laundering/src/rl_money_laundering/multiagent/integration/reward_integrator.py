@@ -13,6 +13,7 @@ from typing import Any, Callable, Dict, List, Optional, Protocol
 
 import numpy as np
 
+from ...protocols import RewardComputationProtocol
 from .config import IntegrationConfig
 
 logger = logging.getLogger(__name__)
@@ -121,7 +122,7 @@ class RewardHistory:
         }
 
 
-class RewardIntegrator:
+class RewardIntegrator(RewardComputationProtocol):
     """Integrates existing rewards with learned judge rewards.
 
     Implements conservative reward combination following the formula:
@@ -171,6 +172,24 @@ class RewardIntegrator:
     def set_text_builder(self, builder: Callable[[Any], str]) -> None:
         """Set or replace episode text builder."""
         self._text_builder = builder
+
+    def compute_reward(
+        self,
+        episode_data: Any,
+        *,
+        original_reward: float = 0.0,
+        true_labels: Optional[Dict[str, bool]] = None,
+        graph_embedding: Optional[Any] = None,
+        episode_text: Optional[str] = None,
+    ) -> tuple[float, Dict[str, Any]]:
+        """Canonical episode reward interface shared with reward computation paths."""
+        del true_labels, graph_embedding
+        combined_reward, metrics = self.compute_episode_reward(
+            original_episode_reward=original_reward,
+            episode_data=episode_data,
+            episode_text=episode_text,
+        )
+        return combined_reward, metrics.to_dict()
 
     def compute_step_reward(
         self,
