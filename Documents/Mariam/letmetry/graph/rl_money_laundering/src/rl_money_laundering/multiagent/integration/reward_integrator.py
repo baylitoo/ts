@@ -9,24 +9,14 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any, Callable, Dict, List, Optional, Protocol
+from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 
+from ...protocols import JudgeModelProtocol, RewardComputationProtocol
 from .config import IntegrationConfig
 
 logger = logging.getLogger(__name__)
-
-
-class JudgeProtocol(Protocol):
-    """Protocol for judge model interface."""
-
-    def compute_reward(
-        self,
-        episode: Dict[str, Any],
-        graph_embedding: Optional[Any] = None,
-        conservative: bool = True,
-    ) -> tuple[float, Dict[str, Any]]: ...
 
 
 @dataclass
@@ -121,7 +111,7 @@ class RewardHistory:
         }
 
 
-class RewardIntegrator:
+class RewardIntegrator(RewardComputationProtocol):
     """Integrates existing rewards with learned judge rewards.
 
     Implements conservative reward combination following the formula:
@@ -145,7 +135,7 @@ class RewardIntegrator:
     def __init__(
         self,
         config: IntegrationConfig,
-        judge_model: Optional[JudgeProtocol] = None,
+        judge_model: Optional[JudgeModelProtocol] = None,
         episode_text_builder: Optional[Callable[[Any], str]] = None,
     ) -> None:
         """Initialize reward integrator.
@@ -164,13 +154,31 @@ class RewardIntegrator:
         self._drift_alarm_raised = False
         self._floor_violation_count = 0
 
-    def set_judge(self, judge: JudgeProtocol) -> None:
+    def set_judge(self, judge: JudgeModelProtocol) -> None:
         """Set or replace judge model."""
         self._judge = judge
 
     def set_text_builder(self, builder: Callable[[Any], str]) -> None:
         """Set or replace episode text builder."""
         self._text_builder = builder
+
+    def compute_reward(
+        self,
+        episode_data: Any,
+        *,
+        original_reward: float = 0.0,
+        true_labels: Optional[Dict[str, bool]] = None,
+        graph_embedding: Optional[Any] = None,
+        episode_text: Optional[str] = None,
+    ) -> tuple[float, Dict[str, Any]]:
+        """Canonical episode reward interface shared with reward computation paths."""
+        del true_labels, graph_embedding
+        combined_reward, metrics = self.compute_episode_reward(
+            original_episode_reward=original_reward,
+            episode_data=episode_data,
+            episode_text=episode_text,
+        )
+        return combined_reward, metrics.to_dict()
 
     def compute_step_reward(
         self,

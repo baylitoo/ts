@@ -10,6 +10,8 @@ import random
 from collections import deque
 from typing import Any, Deque, Dict, List, Optional, Tuple, Union, cast, Protocol, runtime_checkable
 
+from .protocols import AgentActionProtocol
+
 import numpy as np
 import torch
 import torch.nn as nn
@@ -21,7 +23,7 @@ FloatArray = NDArray[np.float64]
 IntArray = NDArray[np.int64]
 
 @runtime_checkable
-class AgentProtocol(Protocol):
+class AgentProtocol(AgentActionProtocol, Protocol):
     """Shared interface for RL agents used in the pipeline/trainer."""
 
     epsilon: float

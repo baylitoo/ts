@@ -15,6 +15,7 @@ from typing import Any, Dict, List, Optional, Protocol
 
 import numpy as np
 
+from ...protocols import AgentActionProtocol
 from .config import IntegrationConfig
 from .environment_adapter import EnvironmentAdapter, EpisodeCollector
 from .encoder_bridge import EncoderBridge, EpisodeTextBuilder
@@ -23,7 +24,7 @@ from .reward_integrator import RewardIntegrator
 logger = logging.getLogger(__name__)
 
 
-class AgentProtocol(Protocol):
+class AgentProtocol(AgentActionProtocol, Protocol):
     """Protocol for RL agent interface."""
 
     def select_action(
