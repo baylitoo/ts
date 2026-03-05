@@ -15,7 +15,6 @@ from torch_geometric.data import Data
 from torch_geometric.nn import GATConv, SAGEConv, TransformerConv
 
 from .gnn_modules import RMGANetsEncoder
-from .gnn_modules.rmganets_encoder_multibranch import RMGANetsMultiBranchEncoder
 
 
 class GraphSAGEEncoder(nn.Module):
@@ -325,6 +324,99 @@ class TGNEncoder(nn.Module):
         return self.readout(hidden)
 
 
+# ---------------------------------------------------------------------------
+# GNN Factory
+# ---------------------------------------------------------------------------
+
+def create_gnn(
+    gnn_type: str,
+    node_feature_dim: int,
+    embedding_dim: int,
+    device: str = "cpu",
+    multi_branch: bool = False,
+    use_dqn_enhancement: bool = False,
+    num_classes: int = 2,
+) -> tuple["nn.Module", bool]:
+    """
+    Instantiate the requested GNN encoder and move it to *device*.
+
+    Returns:
+        (gnn_module, multi_branch_enabled)
+
+    Raises:
+        ValueError: for unknown *gnn_type* strings.
+    """
+    from .gnn_modules.rmganets_encoder_multibranch import RMGANetsMultiBranchEncoder
+
+    multi_branch_enabled = False
+
+    if gnn_type == "sage":
+        gnn = GraphSAGEEncoder(
+            in_channels=node_feature_dim,
+            hidden_channels=64,
+            out_channels=embedding_dim,
+            num_layers=2,
+        )
+    elif gnn_type == "gat":
+        gnn = GATEncoder(
+            in_channels=node_feature_dim,
+            hidden_channels=64,
+            out_channels=embedding_dim,
+            num_layers=2,
+            heads=4,
+        )
+    elif gnn_type == "rmganets":
+        if multi_branch:
+            gnn = RMGANetsMultiBranchEncoder(
+                node_feature_dim=node_feature_dim,
+                hidden_dim=160,
+                embedding_dim=embedding_dim,
+                num_classes=num_classes,
+                num_att_heads=8,
+                T1=0.7,
+                T2=0.3,
+                dropout=0.1,
+                multi_branch=True,
+                use_dqn_enhancement=use_dqn_enhancement,
+            )
+            multi_branch_enabled = True
+        else:
+            gnn = RMGANetsEncoder(
+                node_feature_dim=node_feature_dim,
+                hidden_dim=160,
+                embedding_dim=embedding_dim,
+                num_att_heads=8,
+                T1=0.7,
+                T2=0.3,
+                dropout=0.1,
+                use_dqn_enhancement=use_dqn_enhancement,
+            )
+    elif gnn_type == "tgat":
+        gnn = TGATEncoder(
+            in_channels=node_feature_dim,
+            hidden_channels=128,
+            out_channels=embedding_dim,
+            num_layers=3,
+            heads=4,
+            dropout=0.1,
+        )
+    elif gnn_type == "tgn":
+        gnn = TGNEncoder(
+            in_channels=node_feature_dim,
+            hidden_channels=128,
+            out_channels=embedding_dim,
+            time_dim=32,
+            dropout=0.1,
+        )
+    else:
+        raise ValueError(
+            f"Unknown GNN type: {gnn_type!r}. "
+            "Expected one of: 'sage', 'gat', 'rmganets', 'tgat', 'tgn'."
+        )
+
+    return gnn.to(device), multi_branch_enabled
+
+
 class StateEncoder:
     """
     Encodes graph state for RL agent.
@@ -375,67 +467,16 @@ class StateEncoder:
         else:
             self.time_attributes = default_time_attributes
 
-        # Initialize GNN
-        if gnn_type == "sage":
-            self.gnn = GraphSAGEEncoder(
-                in_channels=node_feature_dim,
-                hidden_channels=64,
-                out_channels=embedding_dim,
-                num_layers=2
-            ).to(device)
-        elif gnn_type == "gat":
-            self.gnn = GATEncoder(
-                in_channels=node_feature_dim,
-                hidden_channels=64,
-                out_channels=embedding_dim,
-                num_layers=2,
-                heads=4
-            ).to(device)
-        elif gnn_type == "rmganets":
-            if multi_branch:
-                self.gnn = RMGANetsMultiBranchEncoder(
-                    node_feature_dim=node_feature_dim,
-                    hidden_dim=160,
-                    embedding_dim=embedding_dim,
-                    num_classes=num_classes,
-                    num_att_heads=8,
-                    T1=0.7,
-                    T2=0.3,
-                    dropout=0.1,
-                    multi_branch=True,
-                    use_dqn_enhancement=use_dqn_enhancement
-                ).to(device)
-                self.multi_branch_enabled = True
-            else:
-                self.gnn = RMGANetsEncoder(
-                    node_feature_dim=node_feature_dim,
-                    hidden_dim=160,
-                    embedding_dim=embedding_dim,
-                    num_att_heads=8,
-                    T1=0.7,
-                    T2=0.3,
-                    dropout=0.1,
-                    use_dqn_enhancement=use_dqn_enhancement
-                ).to(device)
-        elif gnn_type == "tgat":
-            self.gnn = TGATEncoder(
-                in_channels=node_feature_dim,
-                hidden_channels=128,
-                out_channels=embedding_dim,
-                num_layers=3,
-                heads=4,
-                dropout=0.1,
-            ).to(device)
-        elif gnn_type == "tgn":
-            self.gnn = TGNEncoder(
-                in_channels=node_feature_dim,
-                hidden_channels=128,
-                out_channels=embedding_dim,
-                time_dim=32,
-                dropout=0.1,
-            ).to(device)
-        else:
-            raise ValueError(f"Unknown GNN type: {gnn_type}")
+        # Initialize GNN via centralised factory
+        self.gnn, self.multi_branch_enabled = create_gnn(
+            gnn_type=gnn_type,
+            node_feature_dim=node_feature_dim,
+            embedding_dim=embedding_dim,
+            device=device,
+            multi_branch=multi_branch,
+            use_dqn_enhancement=use_dqn_enhancement,
+            num_classes=num_classes,
+        )
 
         self.gnn.eval()  # Start in eval mode
         self.supports_temporal = getattr(self.gnn, "supports_temporal", False)

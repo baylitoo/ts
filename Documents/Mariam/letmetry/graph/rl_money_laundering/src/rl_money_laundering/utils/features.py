@@ -11,145 +11,18 @@ from __future__ import annotations
 import networkx as nx
 import numpy as np
 
+# Canonical implementations live in the features package; re-export for
+# backward compatibility so that `from rl_money_laundering.utils.features
+# import NodeFeatureExtractor` continues to work.
+from ..features import NodeFeatureExtractor  # noqa: F401
 
-class NodeFeatureExtractor:
-    """
-    Consistent node feature extraction for different datasets.
-
-    Handles feature extraction from NetworkX node data with fallbacks
-    for missing attributes.
-    """
-
-    def __init__(
-        self,
-        feature_names: list[str] | None = None,
-        default_value: float = 0.0
-    ):
-        """
-        Initialize feature extractor.
-
-        Args:
-            feature_names: List of feature names to extract
-            default_value: Default value for missing features
-        """
-        self.feature_names = feature_names or self._default_features()
-        self.default_value = default_value
-
-    @staticmethod
-    def _default_features() -> list[str]:
-        """Default feature set for AMLNet dataset."""
-        return [
-            "total_sent",
-            "total_received",
-            "num_transactions_sent",
-            "num_transactions_received",
-            "avg_transaction_amount",
-            "max_transaction_amount",
-            "min_transaction_amount",
-            "transaction_velocity",
-            "in_degree",
-            "out_degree",
-            "pagerank",
-            "risk_score",
-        ]
-
-    def extract(self, node_data: dict) -> np.ndarray:
-        """
-        Extract features from node data.
-
-        Args:
-            node_data: Dictionary of node attributes
-
-        Returns:
-            NumPy array of features
-        """
-        features = []
-
-        for feature_name in self.feature_names:
-            value = node_data.get(feature_name, self.default_value)
-            features.append(float(value))
-
-        return np.array(features, dtype=np.float32)
-
-    def extract_from_graph(
-        self,
-        graph: nx.DiGraph,
-        node: str
-    ) -> np.ndarray:
-        """
-        Extract features directly from graph node.
-
-        Args:
-            graph: NetworkX graph
-            node: Node ID
-
-        Returns:
-            NumPy array of features
-        """
-        if node not in graph:
-            return np.zeros(len(self.feature_names), dtype=np.float32)
-
-        node_data = graph.nodes[node]
-        return self.extract(node_data)
-
-    def get_feature_dim(self) -> int:
-        """Get dimensionality of feature vector."""
-        return len(self.feature_names)
-
-
-class AMLNetFeatureExtractor(NodeFeatureExtractor):
-    """Feature extractor specialized for AMLNet dataset."""
-
-    def __init__(self):
-        super().__init__(
-            feature_names=[
-                "total_sent",
-                "total_received",
-                "num_transactions_sent",
-                "num_transactions_received",
-                "avg_transaction_amount",
-                "max_transaction_amount",
-                "min_transaction_amount",
-                "transaction_velocity",
-                "in_degree",
-                "out_degree",
-                "pagerank",
-                "risk_score",
-            ]
-        )
-
-
-class EllipticFeatureExtractor(NodeFeatureExtractor):
-    """Feature extractor specialized for Elliptic dataset."""
-
-    def __init__(self, num_features: int = 166):
-        """
-        Initialize Elliptic feature extractor.
-
-        Args:
-            num_features: Number of features (166 for Elliptic)
-        """
-        # Elliptic uses numeric feature indices
-        feature_names = [f"feature_{i}" for i in range(num_features)]
-        super().__init__(feature_names=feature_names)
-
-
-def create_feature_extractor(dataset_type: str) -> NodeFeatureExtractor:
-    """
-    Factory function to create appropriate feature extractor.
-
-    Args:
-        dataset_type: "amlnet" or "elliptic"
-
-    Returns:
-        Feature extractor instance
-    """
-    if dataset_type == "amlnet":
-        return AMLNetFeatureExtractor()
-    elif dataset_type == "elliptic":
-        return EllipticFeatureExtractor()
-    else:
-        raise ValueError(f"Unknown dataset type: {dataset_type}")
+__all__ = [
+    "NodeFeatureExtractor",
+    "extract_edge_features",
+    "compute_graph_features",
+    "normalize_features",
+    "log_transform",
+]
 
 
 def extract_edge_features(edge_data: dict) -> np.ndarray:
