@@ -13,7 +13,8 @@ from typing import Any, Callable, Dict, List, Optional
 
 import numpy as np
 
-from ...protocols import JudgeModelProtocol, RewardComputationProtocol
+from ...protocols import JudgeModelProtocol
+from ..reward_computation import BaseRewardComputer
 from .config import IntegrationConfig
 
 logger = logging.getLogger(__name__)
@@ -111,7 +112,7 @@ class RewardHistory:
         }
 
 
-class RewardIntegrator(RewardComputationProtocol):
+class RewardIntegrator(BaseRewardComputer):
     """Integrates existing rewards with learned judge rewards.
 
     Implements conservative reward combination following the formula:

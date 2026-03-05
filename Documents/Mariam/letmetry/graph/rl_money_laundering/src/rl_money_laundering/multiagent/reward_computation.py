@@ -25,6 +25,7 @@ References:
 from __future__ import annotations
 
 import logging
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
@@ -112,7 +113,42 @@ class RewardConfig:
         )
 
 
-class ConservativeRewardComputer:
+class BaseRewardComputer(ABC):
+    """Abstract base for all episode-level reward computation paths.
+
+    Subclasses must implement ``compute_reward`` with the canonical signature
+    defined by ``RewardComputationProtocol``.  Two optional sub-component hooks
+    are provided for subclasses that want shared helper structure.
+    """
+
+    @abstractmethod
+    def compute_reward(
+        self,
+        episode_data: Any,
+        *,
+        original_reward: float = 0.0,
+        true_labels: Optional[Dict[str, bool]] = None,
+        graph_embedding: Optional[Any] = None,
+        episode_text: Optional[str] = None,
+    ) -> Tuple[float, Dict[str, Any]]:
+        """Compute episode reward and return detailed metadata."""
+        ...
+
+    def _compute_hard_metrics(self, episode_data: Any) -> Dict[str, float]:
+        """Extract hard metrics from episode data.  Override in subclasses."""
+        return {"precision": 0.0, "recall": 0.0, "f1": 0.0}
+
+    def _compute_judge_component(
+        self,
+        episode_data: Any,
+        graph_embedding: Optional[Any] = None,
+        episode_text: Optional[str] = None,
+    ) -> Tuple[float, float]:
+        """Return (judge_reward, uncertainty).  Override if a judge is available."""
+        return 0.0, 1.0
+
+
+class ConservativeRewardComputer(BaseRewardComputer):
     """Compute safe, anchored rewards for AML detection.
 
     This class combines hard metrics (precision/recall) with learned

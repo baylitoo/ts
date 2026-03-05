@@ -184,6 +184,7 @@ from .training_callbacks import (
 )
 
 from .reward_computation import (
+    BaseRewardComputer,
     ConservativeRewardComputer,
     RewardConfig,
     create_safe_reward_formula,
@@ -226,6 +227,7 @@ __all__ = [
     "SafetyConfig",
     "JudgeMetricsCallback",
     # Reward computation
+    "BaseRewardComputer",
     "ConservativeRewardComputer",
     "RewardConfig",
     "create_safe_reward_formula",
