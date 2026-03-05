@@ -18,5 +18,5 @@ __all__ = [
     'AdaptiveTopoGCM',
     'HybridEnhancedGCM',
     'FeatureFusionModule',
-    'RMGANetsEncoder'
+    'RMGANetsEncoder',
 ]
